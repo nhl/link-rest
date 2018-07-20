@@ -1,9 +1,5 @@
 package com.nhl.link.rest;
 
-import com.nhl.link.rest.annotation.listener.DataFetched;
-import com.nhl.link.rest.annotation.listener.SelectChainInitialized;
-import com.nhl.link.rest.annotation.listener.SelectRequestParsed;
-import com.nhl.link.rest.annotation.listener.SelectServerParamsApplied;
 import com.nhl.link.rest.constraints.Constraint;
 import com.nhl.link.rest.encoder.Encoder;
 import com.nhl.link.rest.meta.LrEntityOverlay;
@@ -43,15 +39,6 @@ public interface SelectBuilder<T> {
     SelectBuilder<T> dataEncoder(Encoder encoder);
 
     /**
-     * Configures SelectBuilder for a common scenario of "autocomplete" request,
-     * allowing the server-side code to choose which object property to use for
-     * selecting matching objects.
-     *
-     * @since 1.14
-     */
-    SelectBuilder<T> autocompleteOn(Property<?> autocompleteProperty);
-
-    /**
      * Forces the builder to select a single object by ID.
      */
     SelectBuilder<T> byId(Object id);
@@ -81,17 +68,6 @@ public interface SelectBuilder<T> {
      * @since 1.14
      */
     SelectBuilder<T> property(String name);
-
-    /**
-     * Installs an optional constraint function defining how much of the request entity attributes / relationships
-     * the client can see.
-     *
-     * @since 1.3
-     * @deprecated since 2.4 in favor of {@link #constraint(Constraint)}.
-     */
-    default SelectBuilder<T> constraints(Constraint<T> constraint) {
-        return constraint(constraint);
-    }
 
     /**
      * Installs an optional constraint function defining how much of the request entity attributes / relationships
@@ -149,29 +125,6 @@ public interface SelectBuilder<T> {
      * @since 1.2
      */
     SelectBuilder<T> fetchLimit(int limit);
-
-    /**
-     * Adds an annotated listener that will be notified of completion of
-     * individual stages during request processing. Recognized annotations are
-     * {@link SelectChainInitialized}, {@link SelectRequestParsed},
-     * {@link SelectServerParamsApplied}, {@link DataFetched}. Annotated method
-     * can take two forms, one that doesn't change the flow, and another one -
-     * that does:
-     * <p>
-     * <pre>
-     * void doSomething(SelectContext<?> context) {
-     * }
-     *
-     * <T> ProcessingStage<SelectContext<T>, T> doSomethingWithTheFlow(SelectContext<T> context,
-     * 		ProcessingStage<SelectContext<T>, T> next) {
-     * }
-     * </pre>
-     *
-     * @since 1.19
-     * @deprecated since 2.7 use annotation-free functional form of listeners: {@link #stage(SelectStage, Consumer)},
-     * {@link #terminalStage(SelectStage, Consumer)} and {@link #routingStage(SelectStage, Processor)}.
-     */
-    SelectBuilder<T> listener(Object listener);
 
     /**
      * Registers a consumer to be executed after a specified standard execution stage. The consumer can inspect and
@@ -234,13 +187,6 @@ public interface SelectBuilder<T> {
      * @since 2.4
      */
     DataResponse<T> get();
-
-    /**
-     * @deprecated since 2.4 in favor of {@link #get()}.
-     */
-    default DataResponse<T> select() {
-        return get();
-    }
 
     /**
      * Runs the query corresponding to the state of this builder, returning

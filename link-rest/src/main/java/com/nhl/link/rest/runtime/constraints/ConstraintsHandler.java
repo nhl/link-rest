@@ -58,7 +58,7 @@ public class ConstraintsHandler implements IConstraintsHandler {
 
 		// fetchOffset - do not exceed source offset
 		int upperOffset = constraints.getFetchOffset();
-		if (upperOffset > 0 && entity.getFetchOffset() > upperOffset) {
+		if (upperOffset > 0 && (entity.getFetchOffset() < 0 || entity.getFetchOffset() > upperOffset)) {
 			LOGGER.info("Reducing fetch offset from " + entity.getFetchOffset() + " to max allowed value of "
 					+ upperOffset);
 			entity.setFetchOffset(upperOffset);
@@ -66,7 +66,7 @@ public class ConstraintsHandler implements IConstraintsHandler {
 
 		// fetchLimit - do not exceed source limit
 		int upperLimit = constraints.getFetchLimit();
-		if (upperLimit > 0 && entity.getFetchLimit() > upperLimit) {
+		if (upperLimit > 0 && (entity.getFetchLimit() <= 0 || entity.getFetchLimit() > upperLimit)) {
 			LOGGER.info(
 					"Reducing fetch limit from " + entity.getFetchLimit() + " to max allowed value of " + upperLimit);
 			entity.setFetchLimit(upperLimit);

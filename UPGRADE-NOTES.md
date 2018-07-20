@@ -1,3 +1,41 @@
+## Upgrading to 2.13
+
+### Removed listeners and listener annotations [#300](https://github.com/nhl/link-rest/issues/300)
+
+As a part of the effort cleaning up deprecated API, support for stage listeners and stage listener annotations was removed.
+If you need to extend LinkRest processing chains, you should be using "stage" and "terminalStage" methods with custom lambdas.
+Those are more flexible and easy to understand.
+
+### "query" protocol parameter was moved to "link-rest-sencha" [#301](https://github.com/nhl/link-rest/issues/301)
+
+Support for "query" protocol parameter (doing case insensitive "starts with" search on a server-specified property) 
+is now limited to the Sencha flavor of LinkRest. Base LinkRest no longer supports this operation. If you are using `link-rest-sencha`,
+replace calls to `SelectBuilder.autocompleteOn` with calls to `.stage(SelectStage.PARSE_REQUEST, SenchaOps.startsWithFilter(T.NAME, uriInfo))`.
+Either SelectStage.PARSE_REQUEST or SelectStage.ASSEMBLE_QUERY stages can be used.
+If you are not using the Sencha module, you can inspect `SenchaOps` code implement a similar function on your own.
+
+
+## Upgrading to 2.11
+
+### JSON encoders stop rendering timezone for all date/time values [#275](https://github.com/nhl/link-rest/issues/275)
+
+Encoding of local date/time values is now uniform for all attribute types and is based on the following rules:
+
+- everything is formatted in server's default TZ
+- TZ is never specified in the formatted string
+- time is not truncated to seconds, so a fractional part may appear in the formatted string
+- fractional part is truncated to milliseconds during encoding
+
+To revert these changes and go back to the old behavior you may use `com.nhl.link.rest.LegacyDateEncodersModule`. In case the modules auto-loading feature is not disabled, it should be sufficient to add the `com.nhl.link.rest:link-rest-legacy-date-encoders` JAR on your application's classpath. Here's how to do it, if you're using Maven build:
+
+```xml
+<dependency>
+	<groupId>com.nhl.link.rest</groupId>
+	<artifactId>link-rest-legacy-date-encoders</artifactId>
+	<version>2.11</version>
+</dependency>
+```
+
 ## Upgrading to 2.10
 
 ### LinkRestAdapter is deprecated, replaced with LrFeatureProvider and LrModuleProvider [#245](https://github.com/nhl/link-rest/issues/245)

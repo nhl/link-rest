@@ -1,5 +1,6 @@
 package com.nhl.link.rest.runtime;
 
+import com.nhl.link.rest.BaseModule;
 import com.nhl.link.rest.DataResponse;
 import com.nhl.link.rest.EntityConstraint;
 import com.nhl.link.rest.LinkRestException;
@@ -7,15 +8,16 @@ import com.nhl.link.rest.LrFeatureProvider;
 import com.nhl.link.rest.LrModuleProvider;
 import com.nhl.link.rest.MetadataResponse;
 import com.nhl.link.rest.SimpleResponse;
+import com.nhl.link.rest.encoder.Encoder;
 import com.nhl.link.rest.encoder.EncoderFilter;
 import com.nhl.link.rest.encoder.PropertyMetadataEncoder;
+import com.nhl.link.rest.encoder.converter.StringConverter;
 import com.nhl.link.rest.meta.LrEntityOverlay;
 import com.nhl.link.rest.meta.cayenne.CayenneEntityCompiler;
 import com.nhl.link.rest.meta.compiler.LrEntityCompiler;
 import com.nhl.link.rest.meta.compiler.PojoEntityCompiler;
 import com.nhl.link.rest.meta.parser.IResourceParser;
 import com.nhl.link.rest.meta.parser.ResourceParser;
-import com.nhl.link.rest.parser.converter.JsonValueConverter;
 import com.nhl.link.rest.provider.CayenneRuntimeExceptionMapper;
 import com.nhl.link.rest.provider.DataResponseWriter;
 import com.nhl.link.rest.provider.LinkRestExceptionMapper;
@@ -46,17 +48,15 @@ import com.nhl.link.rest.runtime.cayenne.processor.update.CayenneUpdateStage;
 import com.nhl.link.rest.runtime.cayenne.processor.update.CayenneUpdateStartStage;
 import com.nhl.link.rest.runtime.constraints.ConstraintsHandler;
 import com.nhl.link.rest.runtime.constraints.IConstraintsHandler;
-import com.nhl.link.rest.runtime.encoder.AttributeEncoderFactory;
+import com.nhl.link.rest.runtime.encoder.AttributeEncoderFactoryProvider;
 import com.nhl.link.rest.runtime.encoder.EncoderService;
 import com.nhl.link.rest.runtime.encoder.IAttributeEncoderFactory;
 import com.nhl.link.rest.runtime.encoder.IEncoderService;
 import com.nhl.link.rest.runtime.encoder.IStringConverterFactory;
-import com.nhl.link.rest.runtime.encoder.StringConverterFactory;
+import com.nhl.link.rest.runtime.encoder.StringConverterFactoryProvider;
 import com.nhl.link.rest.runtime.executor.UnboundedExecutorServiceProvider;
 import com.nhl.link.rest.runtime.jackson.IJacksonService;
 import com.nhl.link.rest.runtime.jackson.JacksonService;
-import com.nhl.link.rest.runtime.listener.IListenerService;
-import com.nhl.link.rest.runtime.listener.ListenerService;
 import com.nhl.link.rest.runtime.meta.BaseUrlProvider;
 import com.nhl.link.rest.runtime.meta.IMetadataService;
 import com.nhl.link.rest.runtime.meta.IResourceMetadataService;
@@ -68,18 +68,16 @@ import com.nhl.link.rest.runtime.parser.RequestParser;
 import com.nhl.link.rest.runtime.parser.UpdateParser;
 import com.nhl.link.rest.runtime.parser.cache.IPathCache;
 import com.nhl.link.rest.runtime.parser.cache.PathCache;
-import com.nhl.link.rest.runtime.parser.converter.DefaultJsonValueConverterFactoryProvider;
-import com.nhl.link.rest.runtime.parser.converter.IJsonValueConverterFactory;
 import com.nhl.link.rest.runtime.parser.filter.CayenneExpProcessor;
 import com.nhl.link.rest.runtime.parser.filter.ExpressionPostProcessor;
 import com.nhl.link.rest.runtime.parser.filter.ICayenneExpProcessor;
 import com.nhl.link.rest.runtime.parser.filter.IExpressionPostProcessor;
-import com.nhl.link.rest.runtime.parser.filter.IKeyValueExpProcessor;
-import com.nhl.link.rest.runtime.parser.filter.KeyValueExpProcessor;
 import com.nhl.link.rest.runtime.parser.sort.ISortProcessor;
 import com.nhl.link.rest.runtime.parser.sort.SortProcessor;
-import com.nhl.link.rest.runtime.parser.tree.ITreeProcessor;
-import com.nhl.link.rest.runtime.parser.tree.IncludeExcludeProcessor;
+import com.nhl.link.rest.runtime.parser.tree.ExcludeProcessor;
+import com.nhl.link.rest.runtime.parser.tree.IExcludeProcessor;
+import com.nhl.link.rest.runtime.parser.tree.IIncludeProcessor;
+import com.nhl.link.rest.runtime.parser.tree.IncludeProcessor;
 import com.nhl.link.rest.runtime.processor.delete.DeleteProcessorFactory;
 import com.nhl.link.rest.runtime.processor.meta.CollectMetadataStage;
 import com.nhl.link.rest.runtime.processor.meta.MetadataProcessorFactory;
@@ -427,7 +425,8 @@ public class LinkRestBuilder {
 
         Collection<Module> moduleCollector = new ArrayList<>();
 
-        // core module goes first, the rest of them override the core and each other
+        // base and core module goes first, the rest of them override the core and each other
+        moduleCollector.add(createBaseModule());
         moduleCollector.add(createCoreModule());
 
         // TODO: consistent sorting policy past core module...
@@ -474,6 +473,10 @@ public class LinkRestBuilder {
 
         collector.addAll(modules);
         moduleProviders.forEach(p -> collector.add(p.module()));
+    }
+
+    private Module createBaseModule() {
+        return new BaseModule();
     }
 
     private Module createCoreModule() {
@@ -546,29 +549,30 @@ public class LinkRestBuilder {
             binder.bind(CayenneUnrelateStartStage.class).to(CayenneUnrelateStartStage.class);
             binder.bind(CayenneUnrelateDataStoreStage.class).to(CayenneUnrelateDataStoreStage.class);
 
+            // a map of custom encoders
+            binder.bindMap(Encoder.class);
+            binder.bind(IAttributeEncoderFactory.class).toProvider(AttributeEncoderFactoryProvider.class);
+
             // a map of custom converters
-            binder.bindMap(JsonValueConverter.class);
-            binder.bind(IJsonValueConverterFactory.class).toProvider(DefaultJsonValueConverterFactoryProvider.class);
+            binder.bindMap(StringConverter.class);
+            binder.bind(IStringConverterFactory.class).toProvider(StringConverterFactoryProvider.class);
 
             binder.bind(IRequestParser.class).to(RequestParser.class);
-            binder.bind(IAttributeEncoderFactory.class).to(AttributeEncoderFactory.class);
-            binder.bind(IStringConverterFactory.class).to(StringConverterFactory.class);
             binder.bind(IEncoderService.class).to(EncoderService.class);
             binder.bind(IRelationshipMapper.class).to(RelationshipMapper.class);
             binder.bind(IMetadataService.class).to(MetadataService.class);
-            binder.bind(IListenerService.class).to(ListenerService.class);
             binder.bind(IResourceMetadataService.class).to(ResourceMetadataService.class);
             binder.bind(IConstraintsHandler.class).to(ConstraintsHandler.class);
             binder.bind(ICayenneExpProcessor.class).to(CayenneExpProcessor.class);
             binder.bind(IExpressionPostProcessor.class).to(ExpressionPostProcessor.class);
-            binder.bind(IKeyValueExpProcessor.class).to(KeyValueExpProcessor.class);
 
             binder.bind(IJacksonService.class).to(JacksonService.class);
             binder.bind(ICayennePersister.class).toInstance(cayenneService);
 
             binder.bind(IPathCache.class).to(PathCache.class);
             binder.bind(ISortProcessor.class).to(SortProcessor.class);
-            binder.bind(ITreeProcessor.class).to(IncludeExcludeProcessor.class);
+            binder.bind(IIncludeProcessor.class).to(IncludeProcessor.class);
+            binder.bind(IExcludeProcessor.class).to(ExcludeProcessor.class);
 
             binder.bind(IResourceParser.class).to(ResourceParser.class);
             binder.bind(IUpdateParser.class).to(UpdateParser.class);
