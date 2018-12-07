@@ -2,6 +2,10 @@ package io.agrest.runtime.encoder;
 
 import io.agrest.EntityProperty;
 import io.agrest.ResourceEntity;
+import io.agrest.backend.util.converter.ExpressionConverter;
+import io.agrest.backend.util.converter.ExpressionMatcher;
+import io.agrest.backend.util.converter.OrderingConverter;
+import io.agrest.backend.util.converter.OrderingSorter;
 import io.agrest.encoder.CollectionEncoder;
 import io.agrest.encoder.DataResponseEncoder;
 import io.agrest.encoder.Encoder;
@@ -36,17 +40,30 @@ public class EncoderService implements IEncoderService {
     private List<EncoderFilter> filters;
     private Map<String, PropertyMetadataEncoder> propertyMetadataEncoders;
     private Map<ResourceEntity<?>, Encoder> entityMetadataEncoders;
+    private ExpressionConverter expressionConverter;
+    private ExpressionMatcher expressionMatcher;
+    private OrderingConverter orderingConverter;
+    private OrderingSorter orderingSorter;
 
     public EncoderService(@Inject List<EncoderFilter> filters,
                           @Inject IAttributeEncoderFactory attributeEncoderFactory,
-                          @Inject IStringConverterFactory stringConverterFactory, @Inject IRelationshipMapper relationshipMapper,
-                          @Inject Map<String, PropertyMetadataEncoder> propertyMetadataEncoders) {
+                          @Inject IStringConverterFactory stringConverterFactory,
+                          @Inject IRelationshipMapper relationshipMapper,
+                          @Inject Map<String, PropertyMetadataEncoder> propertyMetadataEncoders,
+                          @Inject ExpressionConverter expressionConverter,
+                          @Inject ExpressionMatcher expressionMatcher,
+                          @Inject OrderingConverter orderingConverter,
+                          @Inject OrderingSorter orderingSorter) {
         this.attributeEncoderFactory = attributeEncoderFactory;
         this.relationshipMapper = relationshipMapper;
         this.stringConverterFactory = stringConverterFactory;
         this.filters = filters;
         this.propertyMetadataEncoders = propertyMetadataEncoders;
         this.entityMetadataEncoders = new ConcurrentHashMap<>();
+        this.expressionConverter = expressionConverter;
+        this.expressionMatcher = expressionMatcher;
+        this.orderingConverter = orderingConverter;
+        this.orderingSorter = orderingSorter;
     }
 
     @Override
@@ -87,12 +104,13 @@ public class EncoderService implements IEncoderService {
 
         Encoder elementEncoder = collectionElementEncoder(resourceEntity);
         boolean isMapBy = resourceEntity.getMapBy() != null;
+        boolean isQualifier = resourceEntity.getQualifier() != null;
 
         // if mapBy is involved, apply filters at MapBy level, not inside sublists...
         ListEncoder listEncoder = new ListEncoder(
                 elementEncoder,
-                isMapBy ? null : resourceEntity.getQualifier(),
-                resourceEntity.getOrderings())
+                isMapBy ? null : isQualifier ? expressionMatcher.match(expressionConverter.apply(resourceEntity.getQualifier())) : null,
+                orderingSorter.sort(orderingConverter.apply(resourceEntity.getOrderings())))
                 .withOffset(resourceEntity.getFetchOffset())
                 .withLimit(resourceEntity.getFetchLimit());
 
@@ -103,7 +121,7 @@ public class EncoderService implements IEncoderService {
         return isMapBy ?
                 new MapByEncoder(
                         resourceEntity.getMapByPath(),
-                        resourceEntity.getQualifier(),
+                        isQualifier ? expressionMatcher.match(expressionConverter.apply(resourceEntity.getQualifier())) : null,
                         resourceEntity.getMapBy(),
                         listEncoder,
                         stringConverterFactory,

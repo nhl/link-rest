@@ -4,6 +4,7 @@ import io.agrest.AgException;
 import io.agrest.EntityUpdate;
 import io.agrest.ObjectMapper;
 import io.agrest.ObjectMapperFactory;
+import io.agrest.backend.util.converter.ExpressionConverter;
 import io.agrest.meta.AgEntity;
 import io.agrest.runtime.cayenne.ByIdObjectMapperFactory;
 import io.agrest.runtime.meta.IMetadataService;
@@ -27,8 +28,11 @@ import java.util.Map;
  */
 public class CayenneUpdateStage extends CayenneUpdateDataStoreStage {
 
-    public CayenneUpdateStage(@Inject IMetadataService metadataService) {
+    protected ExpressionConverter<Expression> expressionConverter;
+
+    public CayenneUpdateStage(@Inject IMetadataService metadataService, @Inject ExpressionConverter expressionConverter) {
         super(metadataService);
+        this.expressionConverter = expressionConverter;
     }
 
     @Override
@@ -110,7 +114,7 @@ public class CayenneUpdateStage extends CayenneUpdateDataStoreStage {
         List<Expression> expressions = new ArrayList<>(keys.size());
         for (Object key : keys) {
 
-            Expression e = mapper.expressionForKey(key);
+            Expression e = expressionConverter.apply(mapper.expressionForKey(key));
             if (e != null) {
                 expressions.add(e);
             }

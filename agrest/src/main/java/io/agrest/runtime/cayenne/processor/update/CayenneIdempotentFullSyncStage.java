@@ -3,6 +3,8 @@ package io.agrest.runtime.cayenne.processor.update;
 import io.agrest.AgException;
 import io.agrest.EntityUpdate;
 import io.agrest.ObjectMapper;
+import io.agrest.backend.util.converter.ExpressionConverter;
+import io.agrest.runtime.cayenne.converter.CayenneExpressionConverter;
 import io.agrest.runtime.meta.IMetadataService;
 import io.agrest.runtime.processor.update.UpdateContext;
 import org.apache.cayenne.DataObject;
@@ -21,8 +23,8 @@ import java.util.Map;
  */
 public class CayenneIdempotentFullSyncStage extends CayenneIdempotentCreateOrUpdateStage {
 
-    public CayenneIdempotentFullSyncStage(@Inject IMetadataService metadataService) {
-        super(metadataService);
+    public CayenneIdempotentFullSyncStage(@Inject IMetadataService metadataService, @Inject ExpressionConverter expressionConverter) {
+        super(metadataService, expressionConverter);
     }
 
     @Override
@@ -67,7 +69,7 @@ public class CayenneIdempotentFullSyncStage extends CayenneIdempotentCreateOrUpd
         }
 
         if (context.getEntity().getQualifier() != null) {
-            query.andQualifier(context.getEntity().getQualifier());
+            query.andQualifier(expressionConverter.apply(context.getEntity().getQualifier()));
         }
 
         // TODO: use SelectBuilder to get Cayenne representation of the
