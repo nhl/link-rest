@@ -1,12 +1,12 @@
-[![Build Status](https://travis-ci.org/nhl/link-rest.svg?branch=master)](https://travis-ci.org/nhl/link-rest)
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.nhl.link.rest/link-rest/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.nhl.link.rest/link-rest/)
+[![Build Status](https://travis-ci.org/agrestio/agrest.svg?branch=master)](https://travis-ci.org/agrestio/agrest)
+[![Maven Central](https://img.shields.io/maven-central/v/io.agrest/agrest.svg)](https://agrest.io/#get-started)
 
-LinkRest is a flexible model-driven REST data service framework. Visit [our site](http://linkrest.io/) for more information.
+Agrest (foremerly "LinkRest") is a flexible model-driven REST data service framework. It helps to optimize REST interactions and avoid excessive requests to server when navigating data graphs on the client. Visit [our site](http://agrest.io/) for more information. 
 
 Quick links:
 
-* [website](http://linkrest.io)
+* [website](https://agrest.io)
 * [quick tutorial with Bootique and Derby DB](https://github.com/bootique-examples/bootique-linkrest-demo)
-* [documentation](http://linkrest.io/docs/)
+* [documentation](https://agrest.io/docs/)
 * [support](https://groups.google.com/forum/?#!forum/linkrest-user)
-* [upgrade instructions](https://github.com/nhl/link-rest/blob/master/UPGRADE-NOTES.md)
+* [upgrade instructions](https://github.com/agrestio/agrest/blob/master/UPGRADE-NOTES.md)

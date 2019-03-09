@@ -2,23 +2,24 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.nhl.link.rest</groupId>
-    <artifactId>link-rest-parent</artifactId>
-    <version>2.13-SNAPSHOT</version>
+    <groupId>io.agrest</groupId>
+    <artifactId>agrest-parent</artifactId>
+    <version>3.1-SNAPSHOT</version>
 
-    <name>link-rest: Parent POM of LR modules</name>
-    <description>Parent POM of LR modules</description>
+    <name>agrest: Parent POM of Agrest modules</name>
+    <description>Parent POM of Agrest modules</description>
     <packaging>pom</packaging>
 
     <modules>
-        <module>link-rest-base</module>
-        <module>link-rest-annotations</module>
-        <module>link-rest</module>
-        <module>link-rest-client</module>
-        <module>link-rest-sencha</module>
-        <module>link-rest-bom</module>
-        <module>link-rest-docs</module>
-        <module>link-rest-legacy-date-encoders</module>
+        <module>agrest-base</module>
+        <module>agrest-annotations</module>
+        <module>agrest</module>
+        <module>agrest-client</module>
+        <module>agrest-sencha</module>
+        <module>agrest-bom</module>
+        <module>agrest-docs</module>
+        <module>agrest-openapi-designfirst</module>
+        <module>agrest-openapi-designfirst-test</module>
     </modules>
 
     <properties>
@@ -33,16 +34,18 @@
         <servlet-api-version>3.0.0.v201112011016</servlet-api-version>
         <slf4j-version>1.7.12</slf4j-version>
         <cayenne-version>4.1.M2</cayenne-version>
-        <jersey-version>2.22.1</jersey-version>
-        <jackson-version>2.6.4</jackson-version>
+        <jersey-version>2.27</jersey-version>
+        <jaxrs-version>2.1</jaxrs-version>
+        <jackson-version>2.9.8</jackson-version>
+        <openapi-generator-version>3.0.2</openapi-generator-version>
     </properties>
 
-    <url>https://github.com/nhl/link-rest</url>
+    <url>https://github.com/agrestio/agrest/</url>
 
     <licenses>
         <license>
             <name>Apache 2.0 License</name>
-            <url>https://github.com/nhl/link-rest/blob/master/LICENSE.txt</url>
+            <url>https://github.com/agrestio/agrest/blob/master/LICENSE.txt</url>
             <distribution>repo</distribution>
         </license>
     </licenses>
@@ -59,9 +62,9 @@
     </developers>
 
     <scm>
-        <connection>scm:git:https://github.com/nhl/link-rest</connection>
-        <developerConnection>scm:git:ssh://git@github.com/nhl/link-rest</developerConnection>
-        <url>https://github.com/nhl/link-rest</url>
+        <connection>scm:git:https://github.com/agrestio/agrest</connection>
+        <developerConnection>scm:git:ssh://git@github.com/agrestio/agrest</developerConnection>
+        <url>https://github.com/agrestio/agrest</url>
         <tag>HEAD</tag>
     </scm>
 
@@ -73,15 +76,15 @@
             <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
         </repository>
         <snapshotRepository>
-            <id>linkrest-snapshots</id>
+            <id>agrest-snapshots</id>
             <url>http://maven.objectstyle.org/nexus/content/repositories/linkrest-snapshots</url>
         </snapshotRepository>
     </distributionManagement>
 
     <repositories>
         <repository>
-            <id>linkrest-dependencies</id>
-            <name>Link Rest Dependencies Repo</name>
+            <id>agrest-dependencies</id>
+            <name>Agrest Dependencies Repo</name>
             <url>http://maven.objectstyle.org/nexus/content/groups/linkrest</url>
         </repository>
         <repository>
@@ -97,8 +100,8 @@
     </repositories>
     <pluginRepositories>
         <pluginRepository>
-            <id>linkrest-dependencies</id>
-            <name>Link Rest Dependencies Repo</name>
+            <id>agrest-dependencies</id>
+            <name>AgRest Dependencies Repo</name>
             <url>http://maven.objectstyle.org/nexus/content/groups/linkrest</url>
             <snapshots>
                 <enabled>false</enabled>
@@ -141,7 +144,7 @@
             <dependency>
                 <groupId>javax.ws.rs</groupId>
                 <artifactId>javax.ws.rs-api</artifactId>
-                <version>2.0</version>
+                <version>${jaxrs-version}</version>
             </dependency>
             <dependency>
                 <groupId>org.glassfish.jersey.containers</groupId>
@@ -156,6 +159,11 @@
             <dependency>
                 <groupId>org.glassfish.jersey.test-framework.providers</groupId>
                 <artifactId>jersey-test-framework-provider-inmemory</artifactId>
+                <version>${jersey-version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.glassfish.jersey.inject</groupId>
+                <artifactId>jersey-hk2</artifactId>
                 <version>${jersey-version}</version>
             </dependency>
             <dependency>

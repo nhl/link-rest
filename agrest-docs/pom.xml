@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>io.agrest</groupId>
+		<artifactId>agrest-parent</artifactId>
+		<version>3.1-SNAPSHOT</version>
+		<relativePath>../pom.xml</relativePath>
+	</parent>
+
+	<groupId>io.agrest.docs</groupId>
+	<artifactId>agrest-docs</artifactId>
+	<name>agrest-docs: Asciidoc documentation</name>
+	<description>Agrest framework documentation</description>
+	<packaging>pom</packaging>
+
+    <modules>
+        <module>agrest-overview</module>
+        <module>agrest-protocol</module>
+        <module>agrest-framework</module>
+        <module>agrest-workflow</module>
+    </modules>
+
+    <properties>
+        <!--<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>-->
+        <asciidoctorj.version>1.6.0-alpha.7</asciidoctorj.version>
+        <asciidoctor.maven.plugin.version>1.5.6</asciidoctor.maven.plugin.version>
+        <asciidoctorj.pdf.version>1.5.0-alpha.16</asciidoctorj.pdf.version>
+        <jruby.version>9.2.0.0</jruby.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.asciidoctor</groupId>
+            <artifactId>asciidoctorj</artifactId>
+            <version>${asciidoctorj.version}</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.asciidoctor</groupId>
+                    <artifactId>asciidoctor-maven-plugin</artifactId>
+                    <version>${asciidoctor.maven.plugin.version}</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.asciidoctor</groupId>
+                            <artifactId>asciidoctorj-pdf</artifactId>
+                            <version>${asciidoctorj.pdf.version}</version>
+                        </dependency>
+                    </dependencies>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.asciidoctor</groupId>
+                <artifactId>asciidoctor-maven-plugin</artifactId>
+                <configuration>
+                    <sourceDirectory>src/docs/asciidoc</sourceDirectory>
+                    <doctype>book</doctype>
+                    <!-- Attributes common to all output formats -->
+                    <attributes>
+                        <endpoint-url>http://cayenne.apache.org</endpoint-url>
+
+                        <basedir>${project.basedir}</basedir>
+                        <sourcedir>${project.build.sourceDirectory}</sourcedir>
+
+                        <imagesdir>images</imagesdir>
+                        <icons>font</icons>
+
+                        <sectanchors>true</sectanchors>
+                        <idprefix /> <!-- set the idprefix to blank -->
+                        <idseparator>-</idseparator>
+                    </attributes>
+                </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.jruby</groupId>
+                        <artifactId>jruby-complete</artifactId>
+                        <version>${jruby.version}</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>org.asciidoctor</groupId>
+                        <artifactId>asciidoctorj</artifactId>
+                        <version>${asciidoctorj.version}</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+            <!-- Move images to proper path for site -->
+            <plugin>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy docs for site</id>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/site/</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.build.directory}/tmp/</directory>
+                                    <includes>
+                                        <include>${project.artifactId}.html</include>
+                                        <include>${project.artifactId}.toc.html</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+
+                    <execution>
+                        <id>copy images for site</id>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/site/${project.artifactId}/images/</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.build.directory}/tmp/images/</directory>
+                                    <filtering>true</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

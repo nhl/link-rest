@@ -1,10 +1,32 @@
+## Upgrading to 3.0
+
+### Renaming "LinkRest" to "AgRest"
+
+This is the release in which "LinkRest" got renamed to "AgRest", causing the renaming of
+modules, packages , and class prefixes. When upgrading please change the following:
+
+* Change dependency imports from `com.nhl.link.rest:link-rest-*` to `io.agrest:agrest-*`
+* Change package imports from `com.nhl.link.rest.*` to `io.agrest.*`.
+* Update your class references that start with `Lr` to `Ag` prefix.
+
+### LinkRestAdapter is removed [#245](https://github.com/nhl/link-rest/issues/340)
+
+The adapter was deprecated for a while in favor of `AgFeatureProvider` and `AgModuleProvider`. Now it is
+finally removed.
+
+### "link-rest-legacy-date-encoders" module is removed [#245](https://github.com/nhl/link-rest/issues/340)
+
+We no longer support legacy date/time encoders. See upgrade instructions for version 2.11 for details on how to
+update your code.
+
+
 ## Upgrading to 2.13
 
 ### Removed listeners and listener annotations [#300](https://github.com/nhl/link-rest/issues/300)
 
 As a part of the effort cleaning up deprecated API, support for stage listeners and stage listener annotations was removed.
 If you need to extend LinkRest processing chains, you should be using "stage" and "terminalStage" methods with custom lambdas.
-Those are more flexible and easy to understand.
+Those are more flexible and easy to understand. See [2.7 upgrade notes](#replacing-listeners-with-functions-240-241-242-243) below in this document for hints on how to use stages.
 
 ### "query" protocol parameter was moved to "link-rest-sencha" [#301](https://github.com/nhl/link-rest/issues/301)
 
@@ -14,6 +36,9 @@ replace calls to `SelectBuilder.autocompleteOn` with calls to `.stage(SelectStag
 Either SelectStage.PARSE_REQUEST or SelectStage.ASSEMBLE_QUERY stages can be used.
 If you are not using the Sencha module, you can inspect `SenchaOps` code implement a similar function on your own.
 
+### PARSE_REQUEST stage got split in two [#309](https://github.com/nhl/link-rest/issues/309)
+
+If you have callbacks attached to `SelectStage.PARSE_REQUEST` or `UpdateStage.PARSE_REQUEST` stages that rely on the presence of `ResourceEntity` in the context, reattach them to `SelectStage.CREATE_ENTITY` or `UpdateStage.CREATE_ENTITY` respectively, as `ResourceEntity` only becomes available after that new stage.
 
 ## Upgrading to 2.11
 
@@ -26,7 +51,10 @@ Encoding of local date/time values is now uniform for all attribute types and is
 - time is not truncated to seconds, so a fractional part may appear in the formatted string
 - fractional part is truncated to milliseconds during encoding
 
-To revert these changes and go back to the old behavior you may use `com.nhl.link.rest.LegacyDateEncodersModule`. In case the modules auto-loading feature is not disabled, it should be sufficient to add the `com.nhl.link.rest:link-rest-legacy-date-encoders` JAR on your application's classpath. Here's how to do it, if you're using Maven build:
+To revert these changes and go back to the old behavior you may use `com.nhl.link.rest.LegacyDateEncodersModule`. In case
+the modules auto-loading feature is not disabled, it should be sufficient to add the
+`com.nhl.link.rest:link-rest-legacy-date-encoders` JAR on your application's classpath. Here's how to do it,
+if you're using Maven build:
 
 ```xml
 <dependency>
@@ -40,7 +68,7 @@ To revert these changes and go back to the old behavior you may use `com.nhl.lin
 
 ### LinkRestAdapter is deprecated, replaced with LrFeatureProvider and LrModuleProvider [#245](https://github.com/nhl/link-rest/issues/245)
 
-Instead of a monolithic adapter, LinkRest new extension mechanism is based on two separate interfaces, LrFeatureProvider and LrModuleProvider,
+Instead of a monolithic adapter, LinkRest new extension mechanism is based on two separate interfaces, `LrFeatureProvider` and `LrModuleProvider`,
 one to provide JAX-RS extensions, the other - for the LinkRest stack extensions. `LinkRestAdapter` got deprecated. Consider upgrading to the new
 mechanism. Also note that both new providers can be configured for auto-loading using standard Java ServiceLoader mechanism .See 
 [#245](https://github.com/nhl/link-rest/issues/245) for details.
