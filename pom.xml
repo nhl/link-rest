@@ -33,7 +33,7 @@
         <!-- Custom properties (mostly framework versions) -->
         <servlet-api-version>3.0.0.v201112011016</servlet-api-version>
         <slf4j-version>1.7.12</slf4j-version>
-        <cayenne-version>4.1.M2</cayenne-version>
+        <cayenne-version>4.1.B1</cayenne-version>
         <jersey-version>2.27</jersey-version>
         <jaxrs-version>2.1</jaxrs-version>
         <jackson-version>2.9.8</jackson-version>
@@ -86,6 +86,16 @@
             <id>agrest-dependencies</id>
             <name>Agrest Dependencies Repo</name>
             <url>http://maven.objectstyle.org/nexus/content/groups/linkrest</url>
+        </repository>
+        <repository>
+            <id>cayenne-release</id>
+            <url>https://repository.apache.org/content/repositories/orgapachecayenne-1030/</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
         </repository>
         <repository>
             <id>cayenne-snapshots</id>
