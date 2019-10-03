@@ -2,12 +2,10 @@ package io.agrest.it;
 
 import io.agrest.Ag;
 import io.agrest.SimpleResponse;
-import io.agrest.it.fixture.JerseyTestOnDerby;
+import io.agrest.it.fixture.JerseyAndDerbyCase;
 import io.agrest.it.fixture.cayenne.E20;
 import io.agrest.it.fixture.cayenne.E21;
-import org.apache.cayenne.Cayenne;
-import org.apache.cayenne.query.EJBQLQuery;
-import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import javax.ws.rs.DELETE;
@@ -16,51 +14,54 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Configuration;
 import javax.ws.rs.core.Context;
-import javax.ws.rs.core.FeatureContext;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.junit.Assert.assertEquals;
+public class DELETE_NaturalIdIT extends JerseyAndDerbyCase {
 
-public class DELETE_NaturalIdIT extends JerseyTestOnDerby {
+    @BeforeClass
+    public static void startTestRuntime() {
+        startTestRuntime(Resource.class);
+    }
 
     @Override
-    protected void doAddResources(FeatureContext context) {
-        context.register(Resource.class);
+    protected Class<?>[] testEntities() {
+        return new Class[]{E20.class, E21.class};
     }
 
     @Test
-    public void testDelete_SingleId() {
+    public void testSingleId() {
 
-        insert("e20", "name", "'John'");
-        insert("e20", "name", "'Brian'");
+        e20().insertColumns("name_col")
+                .values("John")
+                .values("Brian").exec();
 
-        Response response = target("/single-id/John").request().delete();
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        assertEquals("{\"success\":true}", response.readEntity(String.class));
+        Response r = target("/single-id/John").request().delete();
+        onSuccess(r).bodyEquals("{\"success\":true}");
 
-        assertEquals(1L, Cayenne.objectForQuery(newContext(),
-                new EJBQLQuery("select count(a) from E20 a WHERE a.name = 'Brian'")));
+        e20().matcher().assertOneMatch();
+        e20().matcher().eq("name_col", "Brian").assertOneMatch();
     }
 
     @Test
-    public void testDelete_MultiId() {
+    public void testMultiId() {
 
-        insert("e21", "age, name", "18, 'John'");
-        insert("e21", "age, name", "27, 'Brian'");
+        e21().insertColumns("age", "name")
+                .values(18, "John")
+                .values(27, "Brian").exec();
 
-        Response response = target("/multi-id")
+        Response r = target("/multi-id")
                 .queryParam("age", 18)
                 .queryParam("name", "John")
                 .request()
                 .delete();
 
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        assertEquals("{\"success\":true}", response.readEntity(String.class));
+        onSuccess(r).bodyEquals("{\"success\":true}");
 
-        Assert.assertEquals(1L, countRows(E21.class, E21.AGE.eq(27).andExp(E21.NAME.eq("Brian"))));
+        e21().matcher().assertOneMatch();
+        e21().matcher().eq("name", "Brian").eq("age", 27).assertOneMatch();
     }
 
     @Path("")

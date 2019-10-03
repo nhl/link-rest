@@ -1,15 +1,17 @@
 package io.agrest.runtime.entity;
 
 import io.agrest.ResourceEntity;
-import io.agrest.protocol.MapBy;
+import io.agrest.meta.AgEntityOverlay;
+
+import java.util.Map;
 
 /**
  * @since 2.13
  */
 public interface IMapByMerger {
-
-    void merge(ResourceEntity<?> resourceEntity, MapBy mapBy);
-
-    void mergeIncluded(ResourceEntity<?> resourceEntity, MapBy mapBy);
-
+    
+    /**
+     * @since 3.4 additionally takes request overlays
+     */
+    <T> void merge(ResourceEntity<T> entity, String mapByPath, Map<Class<?>, AgEntityOverlay<?>> overlays);
 }

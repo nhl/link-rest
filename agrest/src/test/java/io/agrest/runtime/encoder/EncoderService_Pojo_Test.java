@@ -2,29 +2,26 @@ package io.agrest.runtime.encoder;
 
 import io.agrest.ResourceEntity;
 import io.agrest.encoder.Encoder;
-import io.agrest.encoder.EncoderFilter;
 import io.agrest.encoder.Encoders;
-import io.agrest.encoder.PropertyMetadataEncoder;
 import io.agrest.it.fixture.pojo.model.P1;
 import io.agrest.it.fixture.pojo.model.P6;
 import io.agrest.meta.AgEntity;
+import io.agrest.meta.AgEntityBuilder;
 import io.agrest.meta.DefaultAgAttribute;
 import io.agrest.meta.LazyAgDataMap;
-import io.agrest.meta.AgEntityBuilder;
 import io.agrest.meta.compiler.AgEntityCompiler;
 import io.agrest.meta.compiler.PojoEntityCompiler;
+import io.agrest.property.BeanPropertyReader;
 import io.agrest.runtime.semantics.RelationshipMapper;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.mock;
 
 public class EncoderService_Pojo_Test {
@@ -32,7 +29,6 @@ public class EncoderService_Pojo_Test {
 	private static Collection<AgEntityCompiler> compilers;
 
 	private EncoderService encoderService;
-	private List<EncoderFilter> filters;
 
 	@BeforeClass
 	public static void setUpClass() {
@@ -43,20 +39,21 @@ public class EncoderService_Pojo_Test {
 	@Before
 	public void setUp() {
 
-		this.filters = new ArrayList<>();
-
-		IAttributeEncoderFactory attributeEncoderFactory = new AttributeEncoderFactoryProvider(Collections.emptyMap()).get();
+		IAttributeEncoderFactory aef = new AttributeEncoderFactory(new ValueEncodersProvider(Collections.emptyMap()).get());
 		IStringConverterFactory stringConverterFactory = mock(IStringConverterFactory.class);
 
-		this.encoderService = new EncoderService(this.filters, attributeEncoderFactory, stringConverterFactory,
-				new RelationshipMapper(), Collections.<String, PropertyMetadataEncoder> emptyMap());
+		this.encoderService = new EncoderService(
+				aef,
+				stringConverterFactory,
+				new RelationshipMapper(),
+				Collections.emptyMap());
 	}
 
 	@Test
-	public void testEncode_SimplePojo_noId() throws IOException {
+	public void testEncode_SimplePojo_noId() {
 		AgEntity<P1> p1age = new AgEntityBuilder<>(P1.class, new LazyAgDataMap(compilers)).build();
-		ResourceEntity<P1> descriptor = new ResourceEntity<P1>(p1age);
-		descriptor.getAttributes().put("name", new DefaultAgAttribute("name", String.class));
+		ResourceEntity<P1> descriptor = new ResourceEntity<>(p1age, null);
+		descriptor.getAttributes().put("name", new DefaultAgAttribute("name", String.class, BeanPropertyReader.reader()));
 
 		P1 p1 = new P1();
 		p1.setName("XYZ");
@@ -64,15 +61,15 @@ public class EncoderService_Pojo_Test {
 	}
 
 	@Test
-	public void testEncode_SimplePojo_Id() throws IOException {
+	public void testEncode_SimplePojo_Id() {
 
 		P6 p6 = new P6();
 		p6.setStringId("myid");
 		p6.setIntProp(4);
 
 		AgEntity<P6> p6age = new AgEntityBuilder<>(P6.class, new LazyAgDataMap(compilers)).build();
-		ResourceEntity<P6> descriptor = new ResourceEntity<P6>(p6age);
-		descriptor.getAttributes().put("intProp", new DefaultAgAttribute("intProp", Integer.class));
+		ResourceEntity<P6> descriptor = new ResourceEntity<>(p6age, null);
+		descriptor.getAttributes().put("intProp", new DefaultAgAttribute("intProp", Integer.class, BeanPropertyReader.reader()));
 		descriptor.includeId();
 
 		assertEquals("{\"data\":[{\"id\":\"myid\",\"intProp\":4}],\"total\":1}", toJson(p6, descriptor));

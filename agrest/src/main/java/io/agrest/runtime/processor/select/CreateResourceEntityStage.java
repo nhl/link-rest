@@ -4,8 +4,6 @@ import io.agrest.AgRequest;
 import io.agrest.ResourceEntity;
 import io.agrest.processor.Processor;
 import io.agrest.processor.ProcessorOutcome;
-import io.agrest.protocol.Dir;
-import io.agrest.protocol.Sort;
 import io.agrest.runtime.entity.ICayenneExpMerger;
 import io.agrest.runtime.entity.IExcludeMerger;
 import io.agrest.runtime.entity.IIncludeMerger;
@@ -53,7 +51,11 @@ public class CreateResourceEntityStage implements Processor<SelectContext<?>> {
     }
 
     protected <T> void doExecute(SelectContext<T> context) {
-        ResourceEntity<T> resourceEntity = new ResourceEntity<>(metadataService.getAgEntity(context.getType()));
+        Class<T> type = context.getType();
+        ResourceEntity<T> resourceEntity = new ResourceEntity<>(
+                metadataService.getAgEntity(type),
+                context.getEntityOverlay(type)
+        );
 
         // TODO: no reason why extra properties can't be hierarchical, i.e. we need to parse dot-path here and assign
         //  children to child ResourceEntities
@@ -61,31 +63,16 @@ public class CreateResourceEntityStage implements Processor<SelectContext<?>> {
             resourceEntity.getExtraProperties().putAll(context.getExtraProperties());
         }
 
-        AgRequest request = context.getRawRequest();
+        AgRequest request = context.getMergedRequest();
         if (request != null) {
             sizeMerger.merge(resourceEntity, request.getStart(), request.getLimit());
-            includeMerger.merge(resourceEntity, request.getIncludes());
+            includeMerger.merge(resourceEntity, request.getIncludes(), context.getEntityOverlays());
             excludeMerger.merge(resourceEntity, request.getExcludes());
-            sortMerger.merge(resourceEntity, createSort(context));
-            mapByMerger.merge(resourceEntity, request.getMapBy());
+            sortMerger.merge(resourceEntity, request.getOrderings());
+            mapByMerger.merge(resourceEntity, request.getMapBy(), context.getEntityOverlays());
             expMerger.merge(resourceEntity, request.getCayenneExp());
         }
 
         context.setEntity(resourceEntity);
-    }
-
-    protected <T> Sort createSort(SelectContext<T> context) {
-        return createSort(context.getRawRequest().getSort(), context.getRawRequest().getSortDirection());
-    }
-
-    protected Sort createSort(Sort sort, Dir sortDirection) {
-
-        // ignoring direction on (1) no sort, (2) list sort, (3) no explicit direction
-        if (sort == null || sort.getProperty() == null || sortDirection == null) {
-            return sort;
-        }
-
-        // combine sort property with direction if they were specified separately
-        return new Sort(sort.getProperty(), sortDirection);
     }
 }

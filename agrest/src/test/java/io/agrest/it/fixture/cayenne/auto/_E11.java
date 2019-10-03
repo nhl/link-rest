@@ -3,7 +3,6 @@ package io.agrest.it.fixture.cayenne.auto;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.util.List;
 
 import org.apache.cayenne.BaseDataObject;
 import org.apache.cayenne.exp.Property;
@@ -24,7 +23,7 @@ public abstract class _E11 extends BaseDataObject {
 
     public static final Property<String> ADDRESS = Property.create("address", String.class);
     public static final Property<String> NAME = Property.create("name", String.class);
-    public static final Property<List<E10>> E10 = Property.create("e10", List.class);
+    public static final Property<E10> E10 = Property.create("e10", E10.class);
 
     protected String address;
     protected String name;
@@ -51,17 +50,12 @@ public abstract class _E11 extends BaseDataObject {
         return this.name;
     }
 
-    public void addToE10(E10 obj) {
-        addToManyTarget("e10", obj, true);
+    public void setE10(E10 e10) {
+        setToOneTarget("e10", e10, true);
     }
 
-    public void removeFromE10(E10 obj) {
-        removeToManyTarget("e10", obj, true);
-    }
-
-    @SuppressWarnings("unchecked")
-    public List<E10> getE10() {
-        return (List<E10>)readProperty("e10");
+    public E10 getE10() {
+        return (E10)readProperty("e10");
     }
 
     @Override

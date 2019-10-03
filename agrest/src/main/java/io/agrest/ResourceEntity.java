@@ -1,7 +1,9 @@
 package io.agrest;
 
+import io.agrest.encoder.EntityEncoderFilter;
 import io.agrest.meta.AgAttribute;
 import io.agrest.meta.AgEntity;
+import io.agrest.meta.AgEntityOverlay;
 import io.agrest.meta.AgRelationship;
 import org.apache.cayenne.exp.Expression;
 import org.apache.cayenne.query.Ordering;
@@ -17,20 +19,19 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * A metadata object that describes a data structure of a given REST resource.
- * Connected ResourceEntities form a tree-like structure that usually overlays a
- * certain Cayenne mapping subgraph (unless this is a non-persistent entity),
- * filtering and extending its properties to describe the data structure to be
- * returned to the client.
+ * A metadata object that describes a data structure of a given REST resource. Connected ResourceEntities form a
+ * tree structure that usually overlays a certain Cayenne mapping subgraph (unless this is a non-persistent entity),
+ * filtering and extending its properties to describe the data structure to be returned to the client.
  * <p>
- * ResourceEntity scope is usually a single request. It is built on the fly by
- * the framework or by the application code.
+ * ResourceEntity scope is a single request. It is usually created by Agrest based on request parameters and can be
+ * optionally further customized by the application via custom stages.
  */
 public class ResourceEntity<T> {
 
     private boolean idIncluded;
 
     private AgEntity<T> agEntity;
+    private AgEntityOverlay<T> agEntityOverlay;
     private Map<String, AgAttribute> attributes;
     private Collection<String> defaultProperties;
 
@@ -45,13 +46,17 @@ public class ResourceEntity<T> {
     private Map<String, EntityProperty> extraProperties;
     private int fetchOffset;
     private int fetchLimit;
-    private boolean filtered;
+    private List<EntityEncoderFilter> entityEncoderFilters;
 
     private SelectQuery<T> select;
-    private List<T> rootResult;
+    private List<T> result;
     private Map<AgObjectId, Object> parentToChildResult;
 
-    public ResourceEntity(AgEntity<T> agEntity) {
+    public ResourceEntity(AgEntity<T> agEntity, AgEntityOverlay<T> agEntityOverlay) {
+
+        this.agEntity = agEntity;
+        this.agEntityOverlay = agEntityOverlay;
+
         this.idIncluded = false;
         this.attributes = new HashMap<>();
         this.defaultProperties = new HashSet<>();
@@ -59,14 +64,21 @@ public class ResourceEntity<T> {
         this.orderings = new ArrayList<>(2);
         this.extraProperties = new HashMap<>();
         this.includedExtraProperties = new HashMap<>();
-        this.agEntity = agEntity;
-        this.rootResult = new ArrayList<>();
+        this.result = new ArrayList<>();
         this.parentToChildResult = new LinkedHashMap<>();
+        this.entityEncoderFilters = new ArrayList<>(3);
     }
 
-    public ResourceEntity(AgEntity<T> agEntity, AgRelationship incoming) {
-        this(agEntity);
+    public ResourceEntity(AgEntity<T> agEntity, AgEntityOverlay<T> agEntityOverlay, AgRelationship incoming) {
+        this(agEntity, agEntityOverlay);
         this.incoming = incoming;
+    }
+
+    /**
+     * @since 3.4
+     */
+    public String getName() {
+        return agEntity.getName();
     }
 
     /**
@@ -74,6 +86,13 @@ public class ResourceEntity<T> {
      */
     public AgEntity<T> getAgEntity() {
         return agEntity;
+    }
+
+    /**
+     * @since 3.4
+     */
+    public AgEntityOverlay<T> getAgEntityOverlay() {
+        return agEntityOverlay;
     }
 
     public AgRelationship getIncoming() {
@@ -114,54 +133,50 @@ public class ResourceEntity<T> {
         this.select = select;
     }
 
-
     /**
      * @since 3.1
      */
     public List<T> getResult() {
-        return rootResult;
+        return result;
     }
 
     /**
+     * @param result objects
      * @since 3.1
-     *
-     *  @param result objects
      */
     public void setResult(List<T> result) {
-        this.rootResult = result;
+        this.result = result;
     }
 
     /**
-     * @since 3.1
-     *
      * @param parentId
      * @return
+     * @since 3.1
      */
     public Object getResult(AgObjectId parentId) {
         return parentToChildResult.get(parentId);
     }
 
     /**
+     * @param parentId
+     * @param object
      * @since 3.1
      * Stores object related to particular parent object.
      * It is used for one-to-one relation between a parent and a child.
-     *
-     * @param parentId
-     * @param object
      */
     public void setToOneResult(AgObjectId parentId, T object) {
         parentToChildResult.put(parentId, object);
     }
 
     /**
-     *  Stores result object as a List of objects. It is used for one-to-many relation between a parent and children.
+     * Stores result object as a List of objects. It is used for one-to-many relation between a parent and children.
      *
      * @param parentId
      * @param object
      * @since 3.1
      */
     public void addToManyResult(AgObjectId parentId, T object) {
-        ((List<T> )parentToChildResult.computeIfAbsent(parentId, k -> new ArrayList<>())).add(object);
+        ((List<T>) parentToChildResult.computeIfAbsent(parentId, k -> new ArrayList<>())).add(object);
     }
 
     /**
@@ -310,13 +325,13 @@ public class ResourceEntity<T> {
      * @since 1.23
      */
     public boolean isFiltered() {
-        return filtered;
+        return !entityEncoderFilters.isEmpty();
     }
 
     /**
-     * @since 1.23
+     * @since 3.4
      */
-    public void setFiltered(boolean filtered) {
-        this.filtered = filtered;
+    public List<EntityEncoderFilter> getEntityEncoderFilters() {
+        return entityEncoderFilters;
     }
 }

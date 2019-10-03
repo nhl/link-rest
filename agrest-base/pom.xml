@@ -4,13 +4,13 @@
     <parent>
         <artifactId>agrest-parent</artifactId>
         <groupId>io.agrest</groupId>
-        <version>3.2-SNAPSHOT</version>
+        <version>3.4-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
     <artifactId>agrest-base</artifactId>
-    <name>agrest-base: Collection of re-usable Agrest artifacts</name>
-    <description>Collection of re-usable Agrest artifacts</description>
+    <name>agrest-base: common client/server components</name>
+    <description>Collection of common Agrest components</description>
 
     <dependencies>
 

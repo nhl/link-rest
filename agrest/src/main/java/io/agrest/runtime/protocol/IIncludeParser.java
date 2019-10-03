@@ -11,7 +11,5 @@ import java.util.List;
  */
 public interface IIncludeParser {
 
-    List<Include> fromStrings(List<String> values);
-
-    Include oneFromString(String value);
+    List<Include> parse(String unparsed);
 }

@@ -3,12 +3,13 @@
     <parent>
         <artifactId>agrest-parent</artifactId>
         <groupId>io.agrest</groupId>
-        <version>3.2-SNAPSHOT</version>
+        <version>3.4-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>io.agrest.openapi</groupId>
     <artifactId>agrest-openapi-designfirst</artifactId>
+    <name>agrest-openapi-designfirst: code generator</name>
 
     <dependencies>
         <dependency>

@@ -18,6 +18,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.function.Function;
 
 public class MapByEncoder implements CollectionEncoder {
@@ -28,12 +29,14 @@ public class MapByEncoder implements CollectionEncoder {
     private boolean byId;
     private StringConverter fieldNameConverter;
 
-    public MapByEncoder(String mapByPath, ResourceEntity<?> mapBy, CollectionEncoder collectionEncoder,
-                        IStringConverterFactory converterFactory, IAttributeEncoderFactory encoderFactory) {
+    public MapByEncoder(
+            String mapByPath,
+            ResourceEntity<?> mapBy,
+            CollectionEncoder collectionEncoder,
+            IStringConverterFactory converterFactory,
+            IAttributeEncoderFactory encoderFactory) {
 
-        if (mapBy == null) {
-            throw new NullPointerException("Null mapBy");
-        }
+        Objects.requireNonNull(mapBy, "Null mapBy");
 
         this.mapByPath = mapByPath;
         this.mapByReaders = new ArrayList<>();
@@ -43,7 +46,7 @@ public class MapByEncoder implements CollectionEncoder {
     }
 
     private static Function<Object, ?> getPropertyReader(String propertyName, EntityProperty property) {
-        return it -> property.read(it, propertyName);
+        return it -> property.getReader().value(it, propertyName);
     }
 
     @Override
@@ -60,13 +63,16 @@ public class MapByEncoder implements CollectionEncoder {
         return collectionEncoder.visitEntities(object, visitor);
     }
 
-    private void config(IStringConverterFactory converterFactory, IAttributeEncoderFactory encoderFactory,
-                        ResourceEntity<?> mapBy) {
+    private void config(
+            IStringConverterFactory converterFactory,
+            IAttributeEncoderFactory encoderFactory,
+            ResourceEntity<?> mapBy) {
 
         if (mapBy.isIdIncluded()) {
             validateLeafMapBy(mapBy);
             byId = true;
-            this.mapByReaders.add(getPropertyReader(null, encoderFactory.getIdProperty(mapBy)));
+
+            encoderFactory.getIdProperty(mapBy).ifPresent(p -> this.mapByReaders.add(getPropertyReader(null, p)));
             this.fieldNameConverter = converterFactory.getConverter(mapBy.getAgEntity());
             return;
         }
@@ -77,8 +83,9 @@ public class MapByEncoder implements CollectionEncoder {
             byId = false;
 
             Map.Entry<String, AgAttribute> attribute = mapBy.getAttributes().entrySet().iterator().next();
-            mapByReaders.add(getPropertyReader(attribute.getKey(),
-                    encoderFactory.getAttributeProperty(mapBy.getAgEntity(), attribute.getValue())));
+            mapByReaders.add(getPropertyReader(
+                    attribute.getKey(),
+                    encoderFactory.getAttributeProperty(mapBy, attribute.getValue())));
 
             this.fieldNameConverter = converterFactory.getConverter(mapBy.getAgEntity(), attribute.getKey());
             return;
@@ -89,8 +96,12 @@ public class MapByEncoder implements CollectionEncoder {
             byId = false;
 
             Map.Entry<String, ResourceEntity<?>> child = mapBy.getChildren().entrySet().iterator().next();
-            AgRelationship relationship = mapBy.getAgEntity().getRelationship(child.getKey());
-            mapByReaders.add(getPropertyReader(child.getKey(),
+
+            // TODO: to account for overlaid relationships (and avoid NPEs), we should not access agEntity...
+            //  instead should look for incoming rel of a child ResourceEntity.. Is is present in MapBy case?
+            AgRelationship relationship = mapBy.getChild(child.getKey()).getIncoming();
+            mapByReaders.add(getPropertyReader(
+                    child.getKey(),
                     encoderFactory.getRelationshipProperty(mapBy, relationship, null)));
 
             ResourceEntity<?> childMapBy = mapBy.getChildren().get(child.getKey());
@@ -100,16 +111,17 @@ public class MapByEncoder implements CollectionEncoder {
 
         // by default we are dealing with ID
         byId = true;
-        mapByReaders.add(getPropertyReader(null, encoderFactory.getIdProperty(mapBy)));
+        encoderFactory.getIdProperty(mapBy).ifPresent(p -> mapByReaders.add(getPropertyReader(null, p)));
+        fieldNameConverter = converterFactory.getConverter(mapBy.getAgEntity());
     }
 
     private void validateLeafMapBy(ResourceEntity<?> mapBy) {
 
         if (!mapBy.getChildren().isEmpty()) {
 
-            StringBuilder message = new StringBuilder("'mapBy' path segment '");
-            message.append(mapBy.getIncoming().getName()).append(
-                    "should not have children. Full 'mapBy' path: " + mapByPath);
+            StringBuilder message = new StringBuilder("'mapBy' path segment '")
+                    .append(mapBy.getIncoming().getName())
+                    .append("should not have children. Full 'mapBy' path: " + mapByPath);
 
             throw new AgException(Status.BAD_REQUEST, message.toString());
         }

@@ -1,12 +1,13 @@
 package io.agrest.client.it.noadapter;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import io.agrest.DataResponse;
 import io.agrest.Ag;
-import io.agrest.client.ClientDataResponse;
+import io.agrest.DataResponse;
 import io.agrest.client.AgClient;
-import io.agrest.it.fixture.JerseyTestOnDerby;
+import io.agrest.client.ClientDataResponse;
+import io.agrest.it.fixture.JerseyAndDerbyCase;
 import io.agrest.it.fixture.cayenne.E3;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import javax.ws.rs.POST;
@@ -14,17 +15,21 @@ import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.core.Configuration;
 import javax.ws.rs.core.Context;
-import javax.ws.rs.core.FeatureContext;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
-public class PUT_Client_IT extends JerseyTestOnDerby {
+public class PUT_Client_IT extends JerseyAndDerbyCase {
+
+    @BeforeClass
+    public static void startTestRuntime() {
+        startTestRuntime(Resource.class);
+    }
 
     @Override
-    protected void doAddResources(FeatureContext context) {
-        context.register(Resource.class);
+    protected Class<?>[] testEntities() {
+        return new Class[]{E3.class};
     }
 
     @Test
@@ -38,7 +43,7 @@ public class PUT_Client_IT extends JerseyTestOnDerby {
         assertEquals(Response.Status.CREATED, r1.getStatus());
         assertEquals(1, r1.getTotal());
 
-        int id = r1.getData().get(0).get(E3.ID_PK_COLUMN).asInt();
+        int id = r1.getData().get(0).get("id").asInt();
         JsonNode e3_before_update = EntityUtil.createE3(id, "ccc");
         assertEquals(e3_before_update, r1.getData().get(0));
 

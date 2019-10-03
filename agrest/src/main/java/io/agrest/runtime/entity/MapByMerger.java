@@ -1,10 +1,13 @@
 package io.agrest.runtime.entity;
 
 import io.agrest.ResourceEntity;
-import io.agrest.meta.AgAttribute;
-import io.agrest.protocol.MapBy;
+import io.agrest.meta.AgEntityOverlay;
+import io.agrest.runtime.meta.IMetadataService;
+import org.apache.cayenne.di.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Map;
 
 /**
  * @since 2.13
@@ -13,51 +16,30 @@ public class MapByMerger implements IMapByMerger {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MapByMerger.class);
 
-    @Override
-    public void merge(ResourceEntity<?> resourceEntity, MapBy mapBy) {
-        if (mapBy == null) {
-            return;
-        }
+    private IMetadataService metadataService;
 
-        final String mapByPath = mapBy.getPath();
-        if (mapByPath != null) {
-            AgAttribute attribute = resourceEntity.getAgEntity().getAttribute(mapByPath);
-            if (attribute != null) {
-                ResourceEntity<?> mapByEntity = new ResourceEntity<>(resourceEntity.getAgEntity());
-                mapByEntity.getAttributes().put(attribute.getName(), attribute);
-                resourceEntity.mapBy(mapByEntity, attribute.getName());
-            } else {
-                ResourceEntity<?> mapByEntity = new ResourceEntity<>(resourceEntity.getAgEntity());
-                IncludeMerger.checkTooLong(mapByPath);
-                IncludeMerger.processIncludePath(mapByEntity, mapByPath);
-                resourceEntity.mapBy(mapByEntity, mapByPath);
-            }
-        }
-
+    public MapByMerger(@Inject IMetadataService metadataService) {
+        this.metadataService = metadataService;
     }
 
     @Override
-    public void mergeIncluded(ResourceEntity<?> resourceEntity, MapBy mapBy) {
-        if (mapBy == null) {
+    public <T> void merge(ResourceEntity<T> entity, String mapByPath, Map<Class<?>, AgEntityOverlay<?>> overlays) {
+        if (mapByPath == null) {
             return;
         }
 
-        final String mapByPath = mapBy.getPath();
-        if (resourceEntity == null) {
-            LOGGER.info("Ignoring 'mapBy:" + mapByPath + "' for non-relationship property");
+        if (entity == null) {
+            LOGGER.info("Ignoring 'mapBy : {}' for non-relationship property", mapByPath);
             return;
         }
 
-        // either root list, or to-many relationship
-        if (resourceEntity.getIncoming() == null || resourceEntity.getIncoming().isToMany()) {
-
-            ResourceEntity<?> mapByRoot = new ResourceEntity<>(resourceEntity.getAgEntity());
-            IncludeMerger.checkTooLong(mapByPath);
-            IncludeMerger.processIncludePath(mapByRoot, mapByPath);
-            resourceEntity.mapBy(mapByRoot, mapByPath);
-
-        } else {
-            LOGGER.info("Ignoring 'mapBy:" + mapByPath + "' for to-one relationship property");
+        if (entity.getIncoming() != null && !entity.getIncoming().isToMany()) {
+            LOGGER.info("Ignoring 'mapBy : {}' for to-one relationship property", mapByPath);
+            return;
         }
+
+        ResourceEntity<?> mapByCompanionEntity = new ResourceEntity<>(entity.getAgEntity(), entity.getAgEntityOverlay());
+        new ResourceEntityTreeBuilder(mapByCompanionEntity, metadataService::getAgEntity, overlays).inflatePath(mapByPath);
+        entity.mapBy(mapByCompanionEntity, mapByPath);
     }
 }

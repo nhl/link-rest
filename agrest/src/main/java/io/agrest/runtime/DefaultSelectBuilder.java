@@ -10,6 +10,8 @@ import io.agrest.SelectStage;
 import io.agrest.SizeConstraints;
 import io.agrest.constraints.Constraint;
 import io.agrest.encoder.Encoder;
+import io.agrest.encoder.EntityEncoderFilter;
+import io.agrest.meta.AgEntityOverlay;
 import io.agrest.processor.Processor;
 import io.agrest.property.PropertyBuilder;
 import io.agrest.runtime.processor.select.SelectContext;
@@ -20,6 +22,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -30,7 +33,7 @@ import java.util.Map;
  */
 public class DefaultSelectBuilder<T> implements SelectBuilder<T> {
 
-    private static final Logger logger = LoggerFactory.getLogger(DefaultSelectBuilder.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(DefaultSelectBuilder.class);
 
     protected SelectContext<T> context;
     protected SelectProcessorFactory processorFactory;
@@ -132,8 +135,27 @@ public class DefaultSelectBuilder<T> implements SelectBuilder<T> {
     }
 
     @Override
-    public SelectBuilder<T> dataEncoder(Encoder encoder) {
+    public SelectBuilder<T> encoder(Encoder encoder) {
         this.context.setEncoder(encoder);
+        return this;
+    }
+
+    /**
+     * @since 3.4
+     */
+    @Override
+    public SelectBuilder<T> entityEncoderFilter(EntityEncoderFilter filter) {
+        if (context.getEntityEncoderFilters() == null) {
+            context.setEntityEncoderFilters(new ArrayList<>());
+        }
+
+        context.getEntityEncoderFilters().add(filter);
+        return this;
+    }
+
+    @Override
+    public <A> SelectBuilder<T> entityOverlay(AgEntityOverlay<A> overlay) {
+        context.addEntityOverlay(overlay);
         return this;
     }
 
@@ -143,14 +165,14 @@ public class DefaultSelectBuilder<T> implements SelectBuilder<T> {
     }
 
     @Override
-    public SelectBuilder<T> property(String name, EntityProperty clientProperty) {
+    public SelectBuilder<T> property(String name, EntityProperty property) {
         if (context.getExtraProperties() == null) {
             context.setExtraProperties(new HashMap<>());
         }
 
-        EntityProperty oldProperty = context.getExtraProperties().put(name, clientProperty);
+        EntityProperty oldProperty = context.getExtraProperties().put(name, property);
         if (oldProperty != null) {
-            logger.info("Overriding existing custom property '" + name + "', ignoring...");
+            LOGGER.info("Overriding existing custom property '{}', ignoring...", name);
         }
 
         return this;

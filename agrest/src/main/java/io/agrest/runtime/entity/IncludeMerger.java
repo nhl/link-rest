@@ -1,120 +1,39 @@
 package io.agrest.runtime.entity;
 
 import io.agrest.AgException;
-import io.agrest.EntityProperty;
 import io.agrest.PathConstants;
 import io.agrest.ResourceEntity;
 import io.agrest.meta.AgAttribute;
-import io.agrest.meta.AgEntity;
-import io.agrest.meta.AgRelationship;
+import io.agrest.meta.AgEntityOverlay;
 import io.agrest.protocol.Include;
+import io.agrest.runtime.meta.IMetadataService;
 import org.apache.cayenne.di.Inject;
 
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 import java.util.List;
+import java.util.Map;
 
 
 public class IncludeMerger implements IIncludeMerger {
 
-    private ISortMerger sortConstructor;
-    private ICayenneExpMerger expConstructor;
-    private IMapByMerger mapByConstructor;
-    private ISizeMerger sizeConstructor;
+    protected IMetadataService metadataService;
+    protected ISortMerger sortMerger;
+    protected ICayenneExpMerger expMerger;
+    protected IMapByMerger mapByMerger;
+    protected ISizeMerger sizeMerger;
 
     public IncludeMerger(
-            @Inject ICayenneExpMerger expConstructor,
-            @Inject ISortMerger sortConstructor,
-            @Inject IMapByMerger mapByConstructor,
-            @Inject ISizeMerger sizeConstructor) {
+            @Inject IMetadataService metadataService,
+            @Inject ICayenneExpMerger expMerger,
+            @Inject ISortMerger sortMerger,
+            @Inject IMapByMerger mapByMerger,
+            @Inject ISizeMerger sizeMerger) {
 
-        this.sortConstructor = sortConstructor;
-        this.expConstructor = expConstructor;
-        this.mapByConstructor = mapByConstructor;
-        this.sizeConstructor = sizeConstructor;
-    }
-
-    /**
-     * Records include path, returning null for the path corresponding to an
-     * attribute, and a child {@link ResourceEntity} for the path corresponding
-     * to relationship.
-     */
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public static ResourceEntity<?> processIncludePath(ResourceEntity<?> parent, String path) {
-        int dot = path.indexOf(PathConstants.DOT);
-
-        if (dot == 0) {
-            throw new AgException(Status.BAD_REQUEST, "Include starts with dot: " + path);
-        }
-
-        if (dot == path.length() - 1) {
-            throw new AgException(Status.BAD_REQUEST, "Include ends with dot: " + path);
-        }
-
-        String property = dot > 0 ? path.substring(0, dot) : path;
-        AgEntity<?> agEntity = parent.getAgEntity();
-
-        if (dot < 0) {
-            EntityProperty requestProperty = parent.getExtraProperties().get(property);
-            if (requestProperty != null) {
-                parent.getIncludedExtraProperties().put(property, requestProperty);
-                return null;
-            }
-
-            AgAttribute attribute = agEntity.getAttribute(property);
-            if (attribute != null) {
-                parent.getAttributes().put(property, attribute);
-                return null;
-            }
-        }
-
-        AgRelationship relationship = agEntity.getRelationship(property);
-        if (relationship != null) {
-
-            ResourceEntity<?> childEntity = parent.getChild(property);
-            if (childEntity == null) {
-                AgEntity<?> targetType = relationship.getTargetEntity();
-                childEntity = new ResourceEntity(targetType, relationship);
-                parent.getChildren().put(property, childEntity);
-            }
-
-            if (dot > 0) {
-                return processIncludePath(childEntity, path.substring(dot + 1));
-            } else {
-                processDefaultIncludes(childEntity);
-                // Id should be included implicitly
-                childEntity.includeId();
-                return childEntity;
-            }
-        }
-
-        // this is root entity id and it's included explicitly
-        if (property.equals(PathConstants.ID_PK_ATTRIBUTE)) {
-            parent.includeId();
-            return null;
-        }
-
-        throw new AgException(Status.BAD_REQUEST, "Invalid include path: " + path);
-    }
-
-    public static void processDefaultIncludes(ResourceEntity<?> resourceEntity) {
-
-        // either there are no includes (taking into account Id) or all includes are relationships
-        if (!resourceEntity.isIdIncluded()
-                && resourceEntity.getAttributes().isEmpty()
-                && resourceEntity.getIncludedExtraProperties().isEmpty()) {
-
-            for (AgAttribute a : resourceEntity.getAgEntity().getAttributes()) {
-                resourceEntity.getAttributes().put(a.getName(), a);
-                resourceEntity.getDefaultProperties().add(a.getName());
-            }
-
-            resourceEntity.getIncludedExtraProperties().putAll(resourceEntity.getExtraProperties());
-            resourceEntity.getDefaultProperties().addAll(resourceEntity.getExtraProperties().keySet());
-
-            // Id should be included by default
-            resourceEntity.includeId();
-        }
+        this.metadataService = metadataService;
+        this.sortMerger = sortMerger;
+        this.expMerger = expMerger;
+        this.mapByMerger = mapByMerger;
+        this.sizeMerger = sizeMerger;
     }
 
     /**
@@ -127,50 +46,62 @@ public class IncludeMerger implements IIncludeMerger {
     }
 
     /**
-     * @since 2.13
+     * @since 3.4
      */
     @Override
-    public void merge(ResourceEntity<?> resourceEntity, List<Include> includes) {
+    public void merge(ResourceEntity<?> entity, List<Include> includes, Map<Class<?>, AgEntityOverlay<?>> overlays) {
+
+        // included attribute sets of the root entity and entities that are included explicitly via relationship includes
+        // may need to get expanded if they don't have any explicit includes otherwise. Will track them here... Entities
+        // that are NOT expanded are those that are "phantom" entities included as a part of the longer path.
+
+        PhantomTrackingResourceEntityTreeBuilder treeBuilder
+                = new PhantomTrackingResourceEntityTreeBuilder(entity, metadataService::getAgEntity, overlays);
+
         for (Include include : includes) {
-            processOne(resourceEntity, include);
+            mergeInclude(entity, include, treeBuilder, overlays);
         }
 
-        IncludeMerger.processDefaultIncludes(resourceEntity);
-    }
-
-    private void processOne(ResourceEntity<?> resourceEntity, Include include) {
-        if (include != null) {
-            processIncludeObject(resourceEntity, include);
-            // processes nested includes
-            include.getIncludes().forEach(i -> processOne(resourceEntity, i));
+        for (ResourceEntity<?> e : treeBuilder.nonPhantomEntities()) {
+            processDefaultIncludes(e);
         }
     }
 
-    private void processIncludeObject(ResourceEntity<?> rootEntity, Include include) {
-        ResourceEntity<?> includeEntity;
+    private void mergeInclude(
+            ResourceEntity<?> entity,
+            Include include,
+            ResourceEntityTreeBuilder treeBuilder,
+            Map<Class<?>, AgEntityOverlay<?>> overlays) {
 
-        final String value = include.getValue();
-        if (value != null && !value.isEmpty()) {
-            IncludeMerger.checkTooLong(value);
-            IncludeMerger.processIncludePath(rootEntity, value);
-        }
+        String path = include.getPath();
+        ResourceEntity<?> includeEntity = (path == null || path.isEmpty()) ? entity : treeBuilder.inflatePath(path);
 
-        final String path = include.getPath();
-        if (path == null || path.isEmpty()) {
-            // root node
-            includeEntity = rootEntity;
-        } else {
-            IncludeMerger.checkTooLong(path);
-            includeEntity = IncludeMerger.processIncludePath(rootEntity, path);
-            if (includeEntity == null) {
-                throw new AgException(Status.BAD_REQUEST,
-                        "Bad include spec, non-relationship 'path' in include object: " + path);
+        mapByMerger.merge(includeEntity, include.getMapBy(), overlays);
+        sortMerger.merge(includeEntity, include.getOrderings());
+        expMerger.merge(includeEntity, include.getCayenneExp());
+        sizeMerger.merge(includeEntity, include.getStart(), include.getLimit());
+    }
+
+    private void processDefaultIncludes(ResourceEntity<?> resourceEntity) {
+        if (!resourceEntity.isIdIncluded()
+                && resourceEntity.getAttributes().isEmpty()
+                && resourceEntity.getIncludedExtraProperties().isEmpty()) {
+
+            for (AgAttribute a : resourceEntity.getAgEntity().getAttributes()) {
+                resourceEntity.getAttributes().put(a.getName(), a);
+                resourceEntity.getDefaultProperties().add(a.getName());
             }
-        }
 
-        mapByConstructor.mergeIncluded(includeEntity, include.getMapBy());
-        sortConstructor.merge(includeEntity, include.getSort());
-        expConstructor.merge(includeEntity, include.getCayenneExp());
-        sizeConstructor.merge(includeEntity, include.getStart(), include.getLimit());
+            if (resourceEntity.getAgEntityOverlay() != null) {
+                for (AgAttribute a : resourceEntity.getAgEntityOverlay().getAttributes()) {
+                    resourceEntity.getAttributes().put(a.getName(), a);
+                    resourceEntity.getDefaultProperties().add(a.getName());
+                }
+            }
+
+            resourceEntity.getIncludedExtraProperties().putAll(resourceEntity.getExtraProperties());
+            resourceEntity.getDefaultProperties().addAll(resourceEntity.getExtraProperties().keySet());
+            resourceEntity.includeId();
+        }
     }
 }

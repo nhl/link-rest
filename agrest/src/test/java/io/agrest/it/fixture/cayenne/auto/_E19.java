@@ -51,26 +51,26 @@ public abstract class _E19 extends BaseDataObject {
     protected BigDecimal bigDecimal;
     protected BigInteger bigInteger;
     protected Boolean booleanObject;
-    protected boolean booleanPrimitive;
+    protected Boolean booleanPrimitive;
     protected Byte byteObject;
-    protected byte bytePrimitive;
+    protected Byte bytePrimitive;
     protected Date cDate;
     protected String cString;
     protected Time cTime;
     protected Timestamp cTimestamp;
     protected Character charObject;
-    protected char charPrimitive;
+    protected Character charPrimitive;
     protected Double doubleObject;
-    protected double doublePrimitive;
+    protected Double doublePrimitive;
     protected Float floatObject;
-    protected float floatPrimitive;
+    protected Float floatPrimitive;
     protected byte[] guid;
     protected Integer intObject;
-    protected int intPrimitive;
+    protected Integer intPrimitive;
     protected Long longObject;
-    protected long longPrimitive;
+    protected Long longPrimitive;
     protected Short shortObject;
-    protected short shortPrimitive;
+    protected Short shortPrimitive;
 
 
     public void setBigDecimal(BigDecimal bigDecimal) {
@@ -110,6 +110,9 @@ public abstract class _E19 extends BaseDataObject {
 
 	public boolean isBooleanPrimitive() {
         beforePropertyRead("booleanPrimitive");
+        if(this.booleanPrimitive == null) {
+            return false;
+        }
         return this.booleanPrimitive;
     }
 
@@ -130,6 +133,9 @@ public abstract class _E19 extends BaseDataObject {
 
     public byte getBytePrimitive() {
         beforePropertyRead("bytePrimitive");
+        if(this.bytePrimitive == null) {
+            return 0;
+        }
         return this.bytePrimitive;
     }
 
@@ -190,6 +196,9 @@ public abstract class _E19 extends BaseDataObject {
 
     public char getCharPrimitive() {
         beforePropertyRead("charPrimitive");
+        if(this.charPrimitive == null) {
+            return 0;
+        }
         return this.charPrimitive;
     }
 
@@ -210,6 +219,9 @@ public abstract class _E19 extends BaseDataObject {
 
     public double getDoublePrimitive() {
         beforePropertyRead("doublePrimitive");
+        if(this.doublePrimitive == null) {
+            return 0;
+        }
         return this.doublePrimitive;
     }
 
@@ -230,6 +242,9 @@ public abstract class _E19 extends BaseDataObject {
 
     public float getFloatPrimitive() {
         beforePropertyRead("floatPrimitive");
+        if(this.floatPrimitive == null) {
+            return 0;
+        }
         return this.floatPrimitive;
     }
 
@@ -260,6 +275,9 @@ public abstract class _E19 extends BaseDataObject {
 
     public int getIntPrimitive() {
         beforePropertyRead("intPrimitive");
+        if(this.intPrimitive == null) {
+            return 0;
+        }
         return this.intPrimitive;
     }
 
@@ -280,6 +298,9 @@ public abstract class _E19 extends BaseDataObject {
 
     public long getLongPrimitive() {
         beforePropertyRead("longPrimitive");
+        if(this.longPrimitive == null) {
+            return 0;
+        }
         return this.longPrimitive;
     }
 
@@ -300,6 +321,9 @@ public abstract class _E19 extends BaseDataObject {
 
     public short getShortPrimitive() {
         beforePropertyRead("shortPrimitive");
+        if(this.shortPrimitive == null) {
+            return 0;
+        }
         return this.shortPrimitive;
     }
 
@@ -378,13 +402,13 @@ public abstract class _E19 extends BaseDataObject {
                 this.booleanObject = (Boolean)val;
                 break;
             case "booleanPrimitive":
-                this.booleanPrimitive = val == null ? false : (Boolean)val;
+                this.booleanPrimitive = (Boolean)val;
                 break;
             case "byteObject":
                 this.byteObject = (Byte)val;
                 break;
             case "bytePrimitive":
-                this.bytePrimitive = val == null ? 0 : (Byte)val;
+                this.bytePrimitive = (Byte)val;
                 break;
             case "cDate":
                 this.cDate = (Date)val;
@@ -402,19 +426,19 @@ public abstract class _E19 extends BaseDataObject {
                 this.charObject = (Character)val;
                 break;
             case "charPrimitive":
-                this.charPrimitive = val == null ? 0 : (Character)val;
+                this.charPrimitive = (Character)val;
                 break;
             case "doubleObject":
                 this.doubleObject = (Double)val;
                 break;
             case "doublePrimitive":
-                this.doublePrimitive = val == null ? 0 : (Double)val;
+                this.doublePrimitive = (Double)val;
                 break;
             case "floatObject":
                 this.floatObject = (Float)val;
                 break;
             case "floatPrimitive":
-                this.floatPrimitive = val == null ? 0 : (Float)val;
+                this.floatPrimitive = (Float)val;
                 break;
             case "guid":
                 this.guid = (byte[])val;
@@ -423,19 +447,19 @@ public abstract class _E19 extends BaseDataObject {
                 this.intObject = (Integer)val;
                 break;
             case "intPrimitive":
-                this.intPrimitive = val == null ? 0 : (Integer)val;
+                this.intPrimitive = (Integer)val;
                 break;
             case "longObject":
                 this.longObject = (Long)val;
                 break;
             case "longPrimitive":
-                this.longPrimitive = val == null ? 0 : (Long)val;
+                this.longPrimitive = (Long)val;
                 break;
             case "shortObject":
                 this.shortObject = (Short)val;
                 break;
             case "shortPrimitive":
-                this.shortPrimitive = val == null ? 0 : (Short)val;
+                this.shortPrimitive = (Short)val;
                 break;
             default:
                 super.writePropertyDirectly(propName, val);
@@ -456,26 +480,26 @@ public abstract class _E19 extends BaseDataObject {
         out.writeObject(this.bigDecimal);
         out.writeObject(this.bigInteger);
         out.writeObject(this.booleanObject);
-        out.writeBoolean(this.booleanPrimitive);
+        out.writeObject(this.booleanPrimitive);
         out.writeObject(this.byteObject);
-        out.writeByte(this.bytePrimitive);
+        out.writeObject(this.bytePrimitive);
         out.writeObject(this.cDate);
         out.writeObject(this.cString);
         out.writeObject(this.cTime);
         out.writeObject(this.cTimestamp);
         out.writeObject(this.charObject);
-        out.writeChar(this.charPrimitive);
+        out.writeObject(this.charPrimitive);
         out.writeObject(this.doubleObject);
-        out.writeDouble(this.doublePrimitive);
+        out.writeObject(this.doublePrimitive);
         out.writeObject(this.floatObject);
-        out.writeFloat(this.floatPrimitive);
+        out.writeObject(this.floatPrimitive);
         out.writeObject(this.guid);
         out.writeObject(this.intObject);
-        out.writeInt(this.intPrimitive);
+        out.writeObject(this.intPrimitive);
         out.writeObject(this.longObject);
-        out.writeLong(this.longPrimitive);
+        out.writeObject(this.longPrimitive);
         out.writeObject(this.shortObject);
-        out.writeShort(this.shortPrimitive);
+        out.writeObject(this.shortPrimitive);
     }
 
     @Override
@@ -484,26 +508,26 @@ public abstract class _E19 extends BaseDataObject {
         this.bigDecimal = (BigDecimal)in.readObject();
         this.bigInteger = (BigInteger)in.readObject();
         this.booleanObject = (Boolean)in.readObject();
-        this.booleanPrimitive = in.readBoolean();
+        this.booleanPrimitive = (Boolean)in.readObject();
         this.byteObject = (Byte)in.readObject();
-        this.bytePrimitive = in.readByte();
+        this.bytePrimitive = (Byte)in.readObject();
         this.cDate = (Date)in.readObject();
         this.cString = (String)in.readObject();
         this.cTime = (Time)in.readObject();
         this.cTimestamp = (Timestamp)in.readObject();
         this.charObject = (Character)in.readObject();
-        this.charPrimitive = in.readChar();
+        this.charPrimitive = (Character)in.readObject();
         this.doubleObject = (Double)in.readObject();
-        this.doublePrimitive = in.readDouble();
+        this.doublePrimitive = (Double)in.readObject();
         this.floatObject = (Float)in.readObject();
-        this.floatPrimitive = in.readFloat();
+        this.floatPrimitive = (Float)in.readObject();
         this.guid = (byte[])in.readObject();
         this.intObject = (Integer)in.readObject();
-        this.intPrimitive = in.readInt();
+        this.intPrimitive = (Integer)in.readObject();
         this.longObject = (Long)in.readObject();
-        this.longPrimitive = in.readLong();
+        this.longPrimitive = (Long)in.readObject();
         this.shortObject = (Short)in.readObject();
-        this.shortPrimitive = in.readShort();
+        this.shortPrimitive = (Short)in.readObject();
     }
 
 }

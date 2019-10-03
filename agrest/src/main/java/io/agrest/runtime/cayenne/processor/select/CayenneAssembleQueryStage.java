@@ -5,9 +5,8 @@ import io.agrest.AgObjectId;
 import io.agrest.ResourceEntity;
 import io.agrest.meta.AgAttribute;
 import io.agrest.meta.AgEntity;
-import io.agrest.meta.AgPersistentAttribute;
-import io.agrest.meta.AgPersistentEntity;
 import io.agrest.meta.AgRelationship;
+import io.agrest.meta.cayenne.CayenneAgAttribute;
 import io.agrest.meta.cayenne.CayenneAgRelationship;
 import io.agrest.processor.Processor;
 import io.agrest.processor.ProcessorOutcome;
@@ -25,7 +24,6 @@ import javax.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 
 /**
  * @since 2.7
@@ -60,9 +58,7 @@ public class CayenneAssembleQueryStage implements Processor<SelectContext<?>> {
             }
         }
 
-        if (context.getParent() != null
-                // TODO override equals() for AgEntity
-                && context.getEntity().getAgEntity().getName().equals(entity.getAgEntity().getName())) {
+        if (context.getParent() != null && context.getEntity().getName().equals(entity.getName())) {
             Expression qualifier = context.getParent().qualifier(entityResolver);
             query.andQualifier(qualifier);
         }
@@ -78,43 +74,54 @@ public class CayenneAssembleQueryStage implements Processor<SelectContext<?>> {
         entity.setSelect(query);
 
         if (entity.getMapBy() != null) {
-            buildChildrenQuery(context, entity, entity.getMapBy().getChildren());
+            for (ResourceEntity<?> c : entity.getMapBy().getChildren().values()) {
+                buildChildQuery(context, entity, c);
+            }
         }
 
-        buildChildrenQuery(context, entity, entity.getChildren());
+        for (ResourceEntity<?> c : entity.getChildren().values()) {
+            buildChildQuery(context, entity, c);
+        }
 
         return query;
     }
 
 
-    private void buildChildrenQuery(SelectContext context, ResourceEntity<?> entity, Map<String, ResourceEntity<?>> children) {
-        for (Map.Entry<String, ResourceEntity<?>> e : children.entrySet()) {
-            ResourceEntity child = e.getValue();
-            if (!(child.getAgEntity() instanceof AgPersistentEntity)) {
-                continue;
-            }
+    private void buildChildQuery(SelectContext context, ResourceEntity<?> parent, ResourceEntity child) {
 
-            List<Property> properties = new ArrayList<>();
-            properties.add(Property.createSelf(child.getType()));
-
-            AgRelationship relationship = entity.getAgEntity().getRelationship(e.getKey());
-            if (relationship instanceof CayenneAgRelationship) {
-                CayenneAgRelationship rel = (CayenneAgRelationship) relationship;
-                for (AgAttribute attribute : entity.getAgEntity().getIds()) {
-                    properties.add(Property.create(ExpressionFactory.dbPathExp(rel.getReverseDbPath() + "." + attribute.getName()), (Class) attribute.getType()));
-                }
-                // transfer expression from parent
-                if (entity.getSelect().getQualifier() != null) {
-                    // TODO: dirty - altering ResourceEntity "qualifier" parameter during query assembly stage. This stage should
-                    //  do what it says it does - assembling query..
-                    child.andQualifier(rel.translateExpressionToSource(entity.getSelect().getQualifier()));
-                }
-
-            }
-
-            SelectQuery childQuery = buildQuery(context, child, null);
-            childQuery.setColumns(properties);
+        // if related entity is not managed by Cayenne
+        if (entityResolver.getObjEntity(child.getType()) == null) {
+            return;
         }
+
+        List<Property> properties = new ArrayList<>();
+        properties.add(Property.createSelf(child.getType()));
+
+        AgRelationship relationship = child.getIncoming();
+        if (relationship instanceof CayenneAgRelationship) {
+
+            CayenneAgRelationship rel = (CayenneAgRelationship) relationship;
+
+            for (AgAttribute attribute : parent.getAgEntity().getIds()) {
+
+                CayenneAgAttribute cayenneAgAttribute = (CayenneAgAttribute) attribute;
+                Expression propertyExp = ExpressionFactory.dbPathExp(rel.getReverseDbPath()
+                        + "."
+                        + cayenneAgAttribute.getDbAttribute().getName());
+                properties.add(Property.create(propertyExp, (Class) attribute.getType()));
+            }
+
+            // translate expression from parent
+            if (parent.getSelect().getQualifier() != null) {
+                // TODO: dirty - altering ResourceEntity "qualifier" parameter during query assembly stage. This stage should
+                //  do what it says it does - assembling query..
+                child.andQualifier(rel.translateExpressionToSource(parent.getSelect().getQualifier()));
+            }
+
+        }
+
+        SelectQuery childQuery = buildQuery(context, child, null);
+        childQuery.setColumns(properties);
     }
 
     <T> SelectQuery<T> basicSelect(ResourceEntity<T> resourceEntity, AgObjectId rootId) {
@@ -122,12 +129,12 @@ public class CayenneAssembleQueryStage implements Processor<SelectContext<?>> {
         // selecting by ID overrides any explicit SelectQuery...
         if (rootId != null) {
 
-            SelectQuery<T> query = new SelectQuery<>(resourceEntity.getAgEntity().getType());
+            SelectQuery<T> query = new SelectQuery<>(resourceEntity.getType());
             query.andQualifier(buildIdQualifer(resourceEntity.getAgEntity(), rootId));
             return query;
         }
 
-        return resourceEntity.getSelect() != null ? resourceEntity.getSelect() : new SelectQuery<>(resourceEntity.getAgEntity().getType());
+        return resourceEntity.getSelect() != null ? resourceEntity.getSelect() : new SelectQuery<>(resourceEntity.getType());
     }
 
     private Expression buildIdQualifer(AgEntity<?> entity, AgObjectId id) {
@@ -146,12 +153,12 @@ public class CayenneAssembleQueryStage implements Processor<SelectContext<?>> {
                         "Failed to build a Cayenne qualifier for entity " + entity.getName()
                                 + ": one of the entity's ID parts is missing in this ID: " + idAttribute.getName());
             }
-            if (idAttribute instanceof AgPersistentAttribute) {
+            if (idAttribute instanceof CayenneAgAttribute) {
                 qualifiers.add(ExpressionFactory.matchDbExp(
-                        ((AgPersistentAttribute) idAttribute).getColumnName(), idValue));
+                        ((CayenneAgAttribute) idAttribute).getDbAttribute().getName(), idValue));
             } else {
-                // can be non-persistent attribute if assembled from @AgId by AgEntityBuilder
-                qualifiers.add(ExpressionFactory.matchDbExp(idAttribute.getName(), idValue));
+                throw new AgException(Response.Status.INTERNAL_SERVER_ERROR,
+                        "ID attribute '" + idAttribute.getName() + "' has no mapping to a column name");
             }
         }
         return ExpressionFactory.and(qualifiers);

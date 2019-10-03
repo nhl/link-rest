@@ -2,6 +2,7 @@ package io.agrest;
 
 import io.agrest.constraints.Constraint;
 import io.agrest.encoder.Encoder;
+import io.agrest.encoder.EntityEncoderFilter;
 import io.agrest.meta.AgEntityOverlay;
 import io.agrest.processor.Processor;
 import io.agrest.processor.ProcessorOutcome;
@@ -15,28 +16,61 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 /**
- * An object that allows to customize/extend Agrest request processing.
- * SelectBuilder instance is bootstrapped by the framework based on a user query
- * or a root entity and then configured by the user server-side code to achieve
- * the desired behavior. Finally {@link #get()} is called to get the results.
+ * An object that allows to customize/extend Agrest request processing. SelectBuilder instance is created by Agrest
+ * and then configured by the user server-side code to achieve the desired behavior. Finally {@link #get()} is called
+ * to get the results.
  */
 public interface SelectBuilder<T> {
 
     /**
-     * Sets request {@link UriInfo} that is a source of various request
-     * parameters.
+     * Sets request {@link UriInfo} that is a source of various request parameters.
      *
      * @since 1.14
      */
     SelectBuilder<T> uri(UriInfo uriInfo);
 
     /**
-     * Sets the encoder for the entities under the "data" key in the response
-     * collection.
+     * Sets the encoder for the entities under the "data" key in the response collection.
      *
      * @since 1.14
+     * @deprecated since 3.4 in favor of {@link #encoder(Encoder)}. The name and the docs of this method was incorrectly
+     * implying that this encoder is only responsible for the "data" part of the response, while it was used to encode
+     * the entire response.
      */
-    SelectBuilder<T> dataEncoder(Encoder encoder);
+    @Deprecated
+    default SelectBuilder<T> dataEncoder(Encoder encoder) {
+        return encoder(encoder);
+    }
+
+    /**
+     * Sets the Encoder of the entire response, overriding framework-provided Encoder.
+     *
+     * @since 3.4
+     */
+    SelectBuilder<T> encoder(Encoder encoder);
+
+    /**
+     * Installs request-scoped {@link EntityEncoderFilter} that allows to customize how individual JSON objects are encoded
+     * within the data list. This method can be called multiple times to add more than one filter.
+     *
+     * @param filter a filter to apply when encoding individual entities
+     * @return this builder instance
+     * @see AgBuilder#entityEncoderFilter(EntityEncoderFilter)
+     * @since 3.4
+     */
+    SelectBuilder<T> entityEncoderFilter(EntityEncoderFilter filter);
+
+    /**
+     * Installs request-scoped {@link AgEntityOverlay} that allows to customize add or change a list of properties of
+     * the overlay entity available in request. This method can be called multiple times to add more than one overlay.
+     * The overlay can alter the root entity, or any other entity in the model.
+     *
+     * @param overlay overlay descriptor
+     * @param <A>     entity type for the overlay. Can be the same as "T", or may be any other model entity.
+     * @return this builder instance
+     * @since 3.4
+     */
+    <A> SelectBuilder<T> entityOverlay(AgEntityOverlay<A> overlay);
 
     /**
      * Forces the builder to select a single object by ID.
@@ -51,20 +85,19 @@ public interface SelectBuilder<T> {
     SelectBuilder<T> byId(Map<String, Object> ids);
 
     /**
-     * Adds a custom property that is appended to the root {@link ResourceEntity}.
+     * Adds a "synthetic" property of the root entity, that is otherwise not present in the model.
      *
-     * @see AgBuilder#entityOverlay(AgEntityOverlay)
+     * @see #entityOverlay(AgEntityOverlay)
      * @since 1.14
      */
-    SelectBuilder<T> property(String name, EntityProperty clientProperty);
+    SelectBuilder<T> property(String name, EntityProperty property);
 
     /**
-     * Adds a custom property that is appended to the root
-     * {@link ResourceEntity}. Property is read as a regular JavaBean
-     * "property", and default encoder is used. For more control over property
-     * access and encoding use {@link #property(String, EntityProperty)}.
+     * Adds a "synthetic" property of the root entity, that is otherwise not present in the model. Property is read as
+     * a regular JavaBean "property", and default encoder is used. For more control over property access and encoding use
+     * {@link #property(String, EntityProperty)}.
      *
-     * @see AgBuilder#entityOverlay(AgEntityOverlay)
+     * @see #entityOverlay(AgEntityOverlay)
      * @since 1.14
      */
     SelectBuilder<T> property(String name);
@@ -217,7 +250,7 @@ public interface SelectBuilder<T> {
      * 							.uri(uriInfo)
      * 							.request(agRequest) // overrides parameters from uriInfo
      * 							.get();
-     * 		}
+     *        }
      *
      * }</pre>
      *

@@ -1,34 +1,38 @@
 package io.agrest.client.it.noadapter;
 
 import com.fasterxml.jackson.databind.JsonNode;
-
 import io.agrest.Ag;
 import io.agrest.DataResponse;
-import io.agrest.client.ClientDataResponse;
 import io.agrest.client.AgClient;
+import io.agrest.client.ClientDataResponse;
 import io.agrest.client.protocol.Include;
-import io.agrest.it.fixture.JerseyTestOnDerby;
+import io.agrest.it.fixture.JerseyAndDerbyCase;
 import io.agrest.it.fixture.cayenne.E2;
 import io.agrest.it.fixture.cayenne.E3;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.core.Configuration;
 import javax.ws.rs.core.Context;
-import javax.ws.rs.core.FeatureContext;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
 
 import static io.agrest.client.it.noadapter.EntityUtil.createE2;
 import static io.agrest.client.it.noadapter.EntityUtil.createE3;
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
-public class POST_Client_IT extends JerseyTestOnDerby {
+public class POST_Client_IT extends JerseyAndDerbyCase {
+
+    @BeforeClass
+    public static void startTestRuntime() {
+        startTestRuntime(Resource.class);
+    }
 
     @Override
-    protected void doAddResources(FeatureContext context) {
-        context.register(Resource.class);
+    protected Class<?>[] testEntities() {
+        return new Class[]{E2.class, E3.class};
     }
 
     @Test
@@ -42,7 +46,7 @@ public class POST_Client_IT extends JerseyTestOnDerby {
         assertEquals(Status.CREATED, r1.getStatus());
         assertEquals(1, r1.getTotal());
 
-        int e3_id = r1.getData().get(0).get(E3.ID_PK_COLUMN).asInt();
+        int e3_id = r1.getData().get(0).get("id").asInt();
         JsonNode e3 = createE3(e3_id, "ccc");
         assertEquals(e3, r1.getData().get(0));
 
@@ -55,7 +59,7 @@ public class POST_Client_IT extends JerseyTestOnDerby {
         assertEquals(Status.CREATED, r2.getStatus());
         assertEquals(1, r2.getTotal());
 
-        int e2_id = r2.getData().get(0).get(E2.ID_PK_COLUMN).asInt();
+        int e2_id = r2.getData().get(0).get("id").asInt();
         assertEquals(createE2(e2_id, "xxx", e3), r2.getData().get(0));
     }
 

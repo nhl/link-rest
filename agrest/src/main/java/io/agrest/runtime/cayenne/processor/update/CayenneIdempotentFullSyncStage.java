@@ -4,6 +4,7 @@ import io.agrest.AgException;
 import io.agrest.EntityUpdate;
 import io.agrest.ObjectMapper;
 import io.agrest.ResourceEntity;
+import io.agrest.runtime.cayenne.ICayennePersister;
 import io.agrest.runtime.meta.IMetadataService;
 import io.agrest.runtime.processor.update.UpdateContext;
 import org.apache.cayenne.DataObject;
@@ -22,8 +23,10 @@ import java.util.Map;
  */
 public class CayenneIdempotentFullSyncStage extends CayenneIdempotentCreateOrUpdateStage {
 
-    public CayenneIdempotentFullSyncStage(@Inject IMetadataService metadataService) {
-        super(metadataService);
+    public CayenneIdempotentFullSyncStage(
+            @Inject IMetadataService metadataService,
+            @Inject ICayennePersister persister) {
+        super(metadataService, persister);
     }
 
     @Override
@@ -58,8 +61,7 @@ public class CayenneIdempotentFullSyncStage extends CayenneIdempotentCreateOrUpd
     }
 
     <T extends DataObject> List<T> allItems(UpdateContext<T> context) {
-        SelectQuery<T> query = buildQuery(context, context.getEntity());
-
+        buildQuery(context, context.getEntity());
 
         // TODO: use SelectBuilder to get Cayenne representation of the
         // resource, instead of duplicating this here...
@@ -70,14 +72,15 @@ public class CayenneIdempotentFullSyncStage extends CayenneIdempotentCreateOrUpd
         if (context.isById() && objects.size() > 1) {
             throw new AgException(Response.Status.INTERNAL_SERVER_ERROR, String.format(
                     "Found more than one object for ID '%s' and entity '%s'",
-                    context.getId(), context.getEntity().getAgEntity().getName()));
+                    context.getId(), context.getEntity().getName()));
         }
         return objects;
     }
 
+    @Override
     <T> SelectQuery<T> buildQuery(UpdateContext<T> context, ResourceEntity<T> entity) {
 
-        SelectQuery<T> query = SelectQuery.query(entity.getAgEntity().getType());
+        SelectQuery<T> query = SelectQuery.query(entity.getType());
 
         // apply various request filters identifying the span of the collection
 

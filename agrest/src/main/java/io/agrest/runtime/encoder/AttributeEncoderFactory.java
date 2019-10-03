@@ -1,217 +1,100 @@
 package io.agrest.runtime.encoder;
 
-import java.sql.Time;
-import java.sql.Timestamp;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.OffsetDateTime;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.Map;
-import java.util.TreeMap;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-
-import io.agrest.CompoundObjectId;
 import io.agrest.EntityProperty;
 import io.agrest.ResourceEntity;
-import io.agrest.SimpleObjectId;
 import io.agrest.encoder.Encoder;
 import io.agrest.encoder.IdEncoder;
 import io.agrest.meta.AgAttribute;
-import io.agrest.meta.AgEntity;
-import io.agrest.meta.AgPersistentAttribute;
-import io.agrest.meta.AgPersistentEntity;
-import io.agrest.meta.AgPersistentRelationship;
 import io.agrest.meta.AgRelationship;
-import io.agrest.property.BeanPropertyReader;
-import io.agrest.property.IdPropertyReader;
+import io.agrest.property.IdReader;
 import io.agrest.property.PropertyBuilder;
 import io.agrest.property.PropertyReader;
-import org.apache.cayenne.DataObject;
+import org.apache.cayenne.di.Inject;
+
+import java.util.Collection;
+import java.util.Map;
+import java.util.Optional;
+import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class AttributeEncoderFactory implements IAttributeEncoderFactory {
 
-	static final Class<?> UTIL_DATE = Date.class;
-	static final Class<?> SQL_DATE = java.sql.Date.class;
-	static final Class<?> SQL_TIME = Time.class;
-	static final Class<?> SQL_TIMESTAMP = Timestamp.class;
-	static final Class<?> LOCAL_DATE = LocalDate.class;
-	static final Class<?> LOCAL_TIME = LocalTime.class;
-	static final Class<?> LOCAL_DATETIME = LocalDateTime.class;
-	static final Class<?> OFFSET_DATETIME = OffsetDateTime.class;
+    private ValueEncoders valueEncoders;
+    private Map<String, Optional<EntityProperty>> idPropertiesByEntity;
 
-	private Map<Class<?>, Encoder> encodersByJavaType;
-	private Encoder defaultEncoder;
+    public AttributeEncoderFactory(@Inject ValueEncoders valueEncoders) {
+        this.valueEncoders = valueEncoders;
+        this.idPropertiesByEntity = new ConcurrentHashMap<>();
+    }
 
-	// these are explicit overrides for named attributes
-	private Map<String, EntityProperty> attributePropertiesByPath;
-	private Map<String, EntityProperty> idPropertiesByEntity;
-	private ConcurrentMap<AgEntity<?>, IdPropertyReader> idPropertyReaders;
+    @Override
+    public EntityProperty getAttributeProperty(ResourceEntity<?> entity, AgAttribute attribute) {
 
-	public AttributeEncoderFactory(Map<Class<?>, Encoder> knownEncoders,
-								   Encoder defaultEncoder) {
-		// creating a concurrent copy of the provided map - we'll be expanding it dynamically.
-		this.encodersByJavaType = new ConcurrentHashMap<>(knownEncoders);
-		this.defaultEncoder = defaultEncoder;
+        // Can't cache the reader, as it may be overlaid and hence request state-dependent
+        Encoder encoder = getEncoder(attribute.getType());
 
-		this.attributePropertiesByPath = new ConcurrentHashMap<>();
-		this.idPropertiesByEntity = new ConcurrentHashMap<>();
-		this.idPropertyReaders = new ConcurrentHashMap<>();
-	}
+        // all attributes these days have a reader, but check just in case
+        return attribute.getPropertyReader() != null
+                ? PropertyBuilder.property(attribute.getPropertyReader()).encodedWith(encoder)
+                : PropertyBuilder.property().encodedWith(encoder);
+    }
 
-	@Override
-	public EntityProperty getAttributeProperty(AgEntity<?> entity, AgAttribute attribute) {
-		String key = entity.getName() + "." + attribute.getName();
+    @Override
+    public EntityProperty getRelationshipProperty(ResourceEntity<?> entity, AgRelationship relationship, Encoder encoder) {
 
-		EntityProperty property = attributePropertiesByPath.get(key);
-		if (property == null) {
-			property = buildAttributeProperty(entity, attribute);
-			attributePropertiesByPath.put(key, property);
-		}
+        // Can't cache the reader, as both reader and encoder depend on request state
+        PropertyReader reader = relationship.getPropertyReader(entity);
 
-		return property;
-	}
+        // all relationships these days have a reader, but check just in case
+        return reader != null
+                ? PropertyBuilder.property(reader).encodedWith(encoder)
+                : PropertyBuilder.property().encodedWith(encoder);
+    }
 
-	@Override
-	public EntityProperty getRelationshipProperty(ResourceEntity<?> entity, AgRelationship relationship, Encoder encoder) {
+    @Override
+    public Optional<EntityProperty> getIdProperty(ResourceEntity<?> entity) {
+        // id properties are not (yet) overlaid and hence can be cached
+        String key = entity.getName();
+        return idPropertiesByEntity.computeIfAbsent(key, k -> buildIdProperty(entity));
+    }
 
-		// TODO: can't cache, as target encoder is dynamic...
-		return buildRelationshipProperty(entity, relationship, encoder);
-	}
+    protected Optional<EntityProperty> buildIdProperty(ResourceEntity<?> entity) {
 
-	@Override
-	public EntityProperty getIdProperty(ResourceEntity<?> entity) {
+        Collection<AgAttribute> ids = entity.getAgEntity().getIds();
 
-		String key = entity.getAgEntity().getName();
+        switch (ids.size()) {
+            case 0:
+                return Optional.empty();
+            case 1:
 
-		EntityProperty property = idPropertiesByEntity.get(key);
-		if (property == null) {
-			property = buildIdProperty(entity);
-			idPropertiesByEntity.put(key, property);
-		}
+                // TODO: abstraction leak... IdReader is not a property (it doesn't take property name to resolve a value),
+                //  yet in EntityProperty it is treated as a property, so wrapping it in one
 
-		return property;
-	}
+                IdReader ir1 = entity.getAgEntity().getIdReader();
+                EntityProperty p1 = PropertyBuilder
+                        .property((r, n) -> ir1.id(r))
+                        .encodedWith(new IdEncoder(getEncoder(ids.iterator().next().getType())));
+                return Optional.of(p1);
 
-	protected EntityProperty buildRelationshipProperty(ResourceEntity<?> entity, AgRelationship relationship, Encoder encoder) {
-		boolean persistent = relationship instanceof AgPersistentRelationship;
-		if (persistent && DataObject.class.isAssignableFrom(entity.getType())) {
-			return PropertyBuilder
-					.property(
-							// wraps function to to get AgObjectId from DataObject
-							(o, n) -> {
-								Object object = getOrCreateIdPropertyReader(entity.getAgEntity()).value(o, "");
-								ResourceEntity child = entity.getChildren().get(n);
-								AgRelationship rel = entity.getAgEntity().getRelationship(n);
-								Object result = null;
-								if (object instanceof Map && child != null) {
-									Map ids = (Map) object;
+            default:
 
-									if (ids.size() == 1) {
-										result = child.getResult(new SimpleObjectId(ids.values().iterator().next()));
-									} else if (ids.size() > 1) {
-										result = child.getResult(new CompoundObjectId(ids));
-									}
+                // keeping attribute encoders in alphabetical order
+                Map<String, Encoder> valueEncoders = new TreeMap<>();
+                for (AgAttribute id : ids) {
+                    valueEncoders.put(id.getName(), getEncoder(id.getType()));
+                }
 
-									if(result == null && rel.isToMany()) {
-										result = Collections.emptyList();
-									}
-								}
-								return result;
-							})
-					.encodedWith(encoder);
-		} else if (relationship.getPropertyReader() != null) {
-			return PropertyBuilder.property(relationship.getPropertyReader());
-		} else {
-			return PropertyBuilder.property().encodedWith(encoder);
-		}
-	}
+                // TODO: abstraction leak... IdReader is not a property (it doesn't take property name to resolve a value),
+                //  yet in EntityProperty it is treated as a property, so wrapping it in one
+                IdReader ir2 = entity.getAgEntity().getIdReader();
+                EntityProperty p2 = PropertyBuilder
+                        .property((r, n) -> ir2.id(r))
+                        .encodedWith(new IdEncoder(valueEncoders));
+                return Optional.of(p2);
+        }
+    }
 
-	protected EntityProperty buildAttributeProperty(AgEntity<?> entity, AgAttribute attribute) {
-		boolean persistent = attribute instanceof AgPersistentAttribute;
-		Encoder encoder = buildEncoder(attribute);
-		return getProperty(entity, attribute.getPropertyReader(), persistent, encoder);
-	}
-
-	private EntityProperty getProperty(AgEntity<?> entity, PropertyReader reader, boolean persistent, Encoder encoder) {
-		if (persistent && DataObject.class.isAssignableFrom(entity.getType())) {
-			return PropertyBuilder.dataObjectProperty().encodedWith(encoder);
-		} else if(reader != null) {
-			return PropertyBuilder.property(reader);
-		} else {
-			return PropertyBuilder.property().encodedWith(encoder);
-		}
-	}
-
-	protected EntityProperty buildIdProperty(ResourceEntity<?> entity) {
-
-		Collection<AgAttribute> ids = entity.getAgEntity().getIds();
-
-		if (entity.getAgEntity() instanceof AgPersistentEntity) {
-
-			// Cayenne object - PK is an ObjectId (even if it is also a
-			// meaningful object property)
-
-			if (ids.size() > 1) {
-				// keeping attribute encoders in alphabetical order
-				Map<String, Encoder> valueEncoders = new TreeMap<>();
-				for (AgAttribute id : ids) {
-					Encoder valueEncoder = buildEncoder(id);
-					valueEncoders.put(id.getName(), valueEncoder);
-				}
-
-				return PropertyBuilder.property(getOrCreateIdPropertyReader(entity.getAgEntity()))
-						.encodedWith(new IdEncoder(valueEncoders));
-			} else {
-
-				AgAttribute id = ids.iterator().next();
-				Encoder valueEncoder = buildEncoder(id);
-
-				return PropertyBuilder.property(getOrCreateIdPropertyReader(entity.getAgEntity()))
-						.encodedWith(new IdEncoder(valueEncoder));
-			}
-		} else {
-
-			// POJO - PK is an object property
-
-			if (ids.isEmpty()) {
-				// use fake ID encoder
-				return PropertyBuilder.doNothingProperty();
-			}
-
-			// TODO: multi-attribute ID?
-
-			AgAttribute id = ids.iterator().next();
-			return PropertyBuilder.property(BeanPropertyReader.reader(id.getName()));
-		}
-	}
-
-	/**
-	 * @since 2.11
-     */
-	protected Encoder buildEncoder(AgAttribute attribute) {
-		return buildEncoder(attribute.getType());
-	}
-
-	private IdPropertyReader getOrCreateIdPropertyReader(AgEntity<?> entity) {
-
-		IdPropertyReader reader = idPropertyReaders.get(entity);
-		if (reader == null) {
-			reader = new IdPropertyReader(entity);
-			IdPropertyReader oldReader = idPropertyReaders.putIfAbsent(entity, reader);
-			reader = (oldReader == null) ? reader : oldReader;
-		}
-		return reader;
-	}
-
-	/**
-	 * @since 1.12
-	 */
-	protected Encoder buildEncoder(Class<?> javaType) {
-		return encodersByJavaType.computeIfAbsent(javaType, vt -> defaultEncoder);
-	}
-
+    protected Encoder getEncoder(Class<?> type) {
+        return valueEncoders.getEncoder(type);
+    }
 }

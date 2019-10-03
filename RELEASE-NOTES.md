@@ -1,11 +1,33 @@
+Release 3.4
+
+* #420 Per-request EncoderFilters
+* #421 Custom per-request Encoder is ignored on update
+* #422 GET: Per-request AgEntityOverlay to customize properties based on request state
+* #423 Wrong Encoder for target entities in overlayed relationships
+* #424 Unwinding Cayenne dependencies - get rid of AgPersistent* models
+
+Release 3.3
+
+* #414 Metadata encoding related memory leak in EncoderService
+* #415 Exposed id with name different from DB column: ExpressionException: Can't resolve path component
+* #418 Obscure exception on entities with no ids 
+* #419 Upgrade to Jackson 2.10.0.pr1
+
 Release 3.2
 
+* #262 Switch to bootique-test
 * #405 Upgrade to Cayenne 4.0.1
+* #406 Overlapping relationship / attribute includes are order dependent
+* #407 Stop using Include / Exclude as dummy containers of other Includes / Excludes
+* #408 Change parameter injection to Strings / Integers
+* #409 Stop using Sort as a dummy container of other Sorts
+* #410 "mapBy" doesn't work with relationship path 
+* #412 "include" with exposed root id: ExpressionException: Can't resolve path component
 
 Release 3.1
 
-* #358 Protocol Enhancement: 'include\exclude' parameters should take an array of values 
-* #384 Change "inlcude" processing strategy from Cayenne prefetches to individual queries
+* #358 Protocol Enhancement: 'include/exclude' parameters should take an array of values 
+* #384 Change "include" processing strategy from Cayenne prefetches to individual queries
 * #392 Request include/exclude settings are ignored for dynamic request properties
 * #394 Upgrade Jackson to 2.9.8
 * #402 An Included relation is missed in case of update operation

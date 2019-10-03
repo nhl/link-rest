@@ -1,25 +1,37 @@
 package io.agrest.meta;
 
+import io.agrest.property.IdReader;
+
 import java.util.Collection;
 
 /**
  * A model of an entity.
- * 
+ *
  * @since 1.12
  */
 public interface AgEntity<T> {
 
-	String getName();
+    String getName();
 
-	Class<T> getType();
+    Class<T> getType();
 
-	Collection<AgAttribute> getIds();
+    Collection<AgAttribute> getIds();
 
-	Collection<AgAttribute> getAttributes();
+    /**
+     * @since 3.4
+     */
+    AgAttribute getIdAttribute(String name);
 
-	AgAttribute getAttribute(String name);
+    Collection<AgAttribute> getAttributes();
 
-	Collection<AgRelationship> getRelationships();
+    AgAttribute getAttribute(String name);
 
-	AgRelationship getRelationship(String name);
+    Collection<AgRelationship> getRelationships();
+
+    AgRelationship getRelationship(String name);
+
+    /**
+     * @since 3.4
+     */
+    IdReader getIdReader();
 }

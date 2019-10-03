@@ -3,7 +3,7 @@ package io.agrest.it;
 import io.agrest.Ag;
 import io.agrest.DataResponse;
 import io.agrest.encoder.DateTimeFormatters;
-import io.agrest.it.fixture.JerseyTestOnDerby;
+import io.agrest.it.fixture.JerseyAndDerbyCase;
 import io.agrest.it.fixture.cayenne.E17;
 import io.agrest.it.fixture.cayenne.E19;
 import io.agrest.it.fixture.cayenne.E2;
@@ -11,9 +11,7 @@ import io.agrest.it.fixture.cayenne.E3;
 import io.agrest.it.fixture.cayenne.E4;
 import io.agrest.it.fixture.cayenne.E6;
 import io.agrest.parser.converter.UtcDateConverter;
-import org.apache.cayenne.Cayenne;
-import org.apache.cayenne.ObjectContext;
-import org.apache.cayenne.query.SQLTemplate;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import javax.ws.rs.GET;
@@ -23,10 +21,8 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Configuration;
 import javax.ws.rs.core.Context;
-import javax.ws.rs.core.FeatureContext;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -34,22 +30,26 @@ import java.net.URLEncoder;
 import java.sql.Time;
 import java.time.Instant;
 import java.time.LocalTime;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
-public class GET_IT extends JerseyTestOnDerby {
+public class GET_IT extends JerseyAndDerbyCase {
+
+    @BeforeClass
+    public static void startTestRuntime() {
+        startTestRuntime(Resource.class);
+    }
 
     @Override
-    protected void doAddResources(FeatureContext context) {
-        context.register(Resource.class);
+    protected Class<?>[] testEntities() {
+        return new Class[]{E2.class, E3.class, E4.class, E6.class, E17.class, E19.class};
     }
 
     @Test
     public void testResponse() {
 
-        insert("e4", "id, c_varchar, c_int", "1, 'xxx', 5");
+        e4().insertColumns("id", "c_varchar", "c_int").values(1, "xxx", 5).exec();
 
         Response response = target("/e4").request().get();
         onSuccess(response).bodyEquals(1,
@@ -61,11 +61,7 @@ public class GET_IT extends JerseyTestOnDerby {
     public void testDateTime() {
 
         Date date = Date.from(Instant.from(UtcDateConverter.dateParser().fromString("2012-02-03T11:01:02Z")));
-
-        SQLTemplate insert = new SQLTemplate(E4.class,
-                "INSERT INTO utest.e4 (c_timestamp) values (#bind($ts 'TIMESTAMP'))");
-        insert.setParams(Collections.singletonMap("ts", date));
-        newContext().performGenericQuery(insert);
+        e4().insertColumns("c_timestamp").values(date).exec();
 
         String dateString = DateTimeFormatters.isoLocalDateTime().format(Instant.ofEpochMilli(date.getTime()));
 
@@ -77,10 +73,7 @@ public class GET_IT extends JerseyTestOnDerby {
     public void testDate() {
 
         Date date = Date.from(Instant.from(UtcDateConverter.dateParser().fromString("2012-02-03")));
-
-        SQLTemplate insert = new SQLTemplate(E4.class, "INSERT INTO utest.e4 (c_date) values (#bind($date 'DATE'))");
-        insert.setParams(Collections.singletonMap("date", date));
-        newContext().performGenericQuery(insert);
+        e4().insertColumns("c_date").values(date).exec();
 
         String dateString = DateTimeFormatters.isoLocalDateTime().format(Instant.ofEpochMilli(date.getTime()));
 
@@ -96,9 +89,7 @@ public class GET_IT extends JerseyTestOnDerby {
         // "14:00:01"
         Time time = Time.valueOf(lt);
 
-        SQLTemplate insert = new SQLTemplate(E4.class, "INSERT INTO utest.e4 (c_time) values (#bind($time 'TIME'))");
-        insert.setParams(Collections.singletonMap("time", time));
-        newContext().performGenericQuery(insert);
+        e4().insertColumns("c_time").values(time).exec();
 
         String timeString = DateTimeFormatters.isoLocalDateTime().format(Instant.ofEpochMilli(time.getTime()));
 
@@ -109,11 +100,12 @@ public class GET_IT extends JerseyTestOnDerby {
     // TODO: add tests for java.sql attributes
 
     @Test
-    public void test_Sort_ById() {
+    public void testSort_ById() {
 
-        insert("e4", "id", "2");
-        insert("e4", "id", "1");
-        insert("e4", "id", "3");
+        e4().insertColumns("id")
+                .values(2)
+                .values(1)
+                .values(3).exec();
 
         Response response = target("/e4")
                 .queryParam("sort", urlEnc("[{\"property\":\"id\",\"direction\":\"DESC\"}]"))
@@ -125,7 +117,7 @@ public class GET_IT extends JerseyTestOnDerby {
     }
 
     @Test
-    public void test_Sort_Invalid() {
+    public void testSort_Invalid() {
 
         Response response = target("/e4")
                 .queryParam("sort", urlEnc("[{\"property\":\"xyz\",\"direction\":\"DESC\"}]"))
@@ -134,18 +126,19 @@ public class GET_IT extends JerseyTestOnDerby {
                 .get();
 
         onResponse(response)
-                .statusEquals(Status.BAD_REQUEST)
+                .statusEquals(Response.Status.BAD_REQUEST)
                 .bodyEquals("{\"success\":false,\"message\":\"Invalid path 'xyz' for 'E4'\"}");
     }
 
     @Test
     // this is a hack for Sencha bug, passing us null sorters per LF-189...
     // allowing for lax property name checking as a result
-    public void test_Sort_Null() {
+    public void testSort_Null() {
 
-        insert("e4", "id", "2");
-        insert("e4", "id", "1");
-        insert("e4", "id", "3");
+        e4().insertColumns("id")
+                .values(2)
+                .values(1)
+                .values(3).exec();
 
         Response response = target("/e4")
                 .queryParam("sort", urlEnc("[{\"property\":null,\"direction\":\"DESC\"}]"))
@@ -157,9 +150,11 @@ public class GET_IT extends JerseyTestOnDerby {
     }
 
     @Test
-    public void test_SelectById() {
+    public void testById() {
 
-        insert("e4", "id", "2");
+        e4().insertColumns("id")
+                .values(2)
+                .exec();
 
         Response response = target("/e4/2").request().get();
 
@@ -173,9 +168,11 @@ public class GET_IT extends JerseyTestOnDerby {
     }
 
     @Test
-    public void test_SelectById_Params() {
+    public void testById_Params() {
 
-        insert("e4", "id", "2");
+        e4().insertColumns("id")
+                .values(2)
+                .exec();
 
         Response response1 = target("/e4/2").request().get();
         onSuccess(response1).bodyEquals(1, "{\"id\":2,\"cBoolean\":null,\"cDate\":null,\"cDecimal\":null,"
@@ -186,19 +183,20 @@ public class GET_IT extends JerseyTestOnDerby {
     }
 
     @Test
-    public void test_SelectById_NotFound() {
+    public void testById_NotFound() {
 
         Response response = target("/e4/2").request().get();
-        onResponse(response).statusEquals(Status.NOT_FOUND)
+        onResponse(response).statusEquals(Response.Status.NOT_FOUND)
                 .bodyEquals("{\"success\":false,\"message\":\"No object for ID '2' and entity 'E4'\"}");
     }
 
     @Test
-    public void test_SelectById_Prefetching() {
+    public void testById_IncludeRelationship() {
 
-        insert("e2", "id, name", "1, 'xxx'");
-        insert("e3", "id, name, e2_id", "8, 'yyy', 1");
-        insert("e3", "id, name, e2_id", "9, 'zzz', 1");
+        e2().insertColumns("id_", "name").values(1, "xxx").exec();
+        e3().insertColumns("id_", "name", "e2_id")
+                .values(8, "yyy", 1)
+                .values(9, "zzz", 1).exec();
 
         Response response1 = target("/e3/8").queryParam("include", "e2.id").request().get();
         onSuccess(response1).bodyEquals(1, "{\"id\":8,\"e2\":{\"id\":1},\"name\":\"yyy\",\"phoneNumber\":null}");
@@ -211,32 +209,17 @@ public class GET_IT extends JerseyTestOnDerby {
     }
 
     @Test
-    public void test_Select_Prefetching() {
+    public void testRelationshipSort() {
 
-        insert("e2", "id, name", "1, 'xxx'");
-        insert("e3", "id, name, e2_id", "8, 'yyy', 1");
-        insert("e3", "id, name, e2_id", "9, 'zzz', 1");
+        e2().insertColumns("id_", "name")
+                .values(1, "zzz")
+                .values(2, "yyy")
+                .values(3, "xxx").exec();
 
-        Response response = target("/e3")
-                .queryParam("include", "id")
-                .queryParam("include", "e2.id")
-                .queryParam("sort", "id")
-                .request()
-                .get();
-
-        onSuccess(response).bodyEquals(2, "{\"id\":8,\"e2\":{\"id\":1}}", "{\"id\":9,\"e2\":{\"id\":1}}");
-    }
-
-    @Test
-    public void test_Select_RelationshipSort() {
-
-        insert("e2", "id, name", "1, 'zzz'");
-        insert("e2", "id, name", "2, 'yyy'");
-        insert("e2", "id, name", "3, 'xxx'");
-
-        insert("e3", "id, name, e2_id", "8, 'aaa', 1");
-        insert("e3", "id, name, e2_id", "9, 'bbb', 2");
-        insert("e3", "id, name, e2_id", "10, 'ccc', 3");
+        e3().insertColumns("id_", "name", "e2_id")
+                .values(8, "aaa", 1)
+                .values(9, "bbb", 2)
+                .values(10, "ccc", 3).exec();
 
         Response response = target("/e3")
                 .queryParam("include", "id")
@@ -252,14 +235,16 @@ public class GET_IT extends JerseyTestOnDerby {
     }
 
     @Test
-    public void test_Select_RelationshipStartLimit() throws UnsupportedEncodingException {
+    public void testRelationshipStartLimit() throws UnsupportedEncodingException {
 
-        insert("e2", "id, name", "1, 'zzz'");
-        insert("e2", "id, name", "2, 'yyy'");
+        e2().insertColumns("id_", "name")
+                .values(1, "zzz")
+                .values(2, "yyy").exec();
 
-        insert("e3", "id, name, e2_id", "8, 'aaa', 1");
-        insert("e3", "id, name, e2_id", "9, 'bbb', 1");
-        insert("e3", "id, name, e2_id", "10, 'ccc', 2");
+        e3().insertColumns("id_", "name", "e2_id")
+                .values(8, "aaa", 1)
+                .values(9, "bbb", 1)
+                .values(10, "ccc", 2).exec();
 
         Response response = target("/e2")
                 .queryParam("include", "id")
@@ -273,35 +258,13 @@ public class GET_IT extends JerseyTestOnDerby {
     }
 
     @Test
-    public void test_Select_Prefetching_StartLimit() {
+    public void testToOne_Null() {
 
-        insert("e2", "id, name", "1, 'xxx'");
+        e2().insertColumns("id_", "name").values(1, "xxx").exec();
 
-        insert("e3", "id, name, e2_id", "8, 'yyy', 1");
-        insert("e3", "id, name, e2_id", "9, 'zzz', 1");
-        insert("e3", "id, name, e2_id", "10, 'zzz', 1");
-        insert("e3", "id, name, e2_id", "11, 'zzz', 1");
-
-        Response response = target("/e3")
-                .queryParam("include", "id", "e2.id")
-                .queryParam("sort", "id")
-                .queryParam("start", "1")
-                .queryParam("limit", "2")
-                .request()
-                .get();
-
-        onSuccess(response).bodyEquals(4,
-                "{\"id\":9,\"e2\":{\"id\":1}}",
-                "{\"id\":10,\"e2\":{\"id\":1}}");
-    }
-
-    @Test
-    public void test_SelectToOne_Null() {
-
-        insert("e2", "id, name", "1, 'xxx'");
-
-        insert("e3", "id, name, e2_id", "8, 'yyy', 1");
-        insert("e3", "id, name, e2_id", "9, 'zzz', null");
+        e3().insertColumns("id_", "name", "e2_id")
+                .values(8, "yyy", 1)
+                .values(9, "zzz", null).exec();
 
         Response response = target("/e3")
                 .queryParam("include", "e2.id", "id")
@@ -314,18 +277,18 @@ public class GET_IT extends JerseyTestOnDerby {
     }
 
     @Test
-    public void test_SelectCharPK() {
+    public void testCharPK() {
 
-        insert("e6", "char_id, char_column", "'a', 'aaa'");
+        e6().insertColumns("char_id", "char_column").values("a", "aaa").exec();
 
         Response response = target("/e6/a").request().get();
         onSuccess(response).bodyEquals(1, "{\"id\":\"a\",\"charColumn\":\"aaa\"}");
     }
 
     @Test
-    public void test_SelectByCompoundId() {
+    public void testByCompoundId() {
 
-        insert("e17", "id1, id2, name", "1, 1, 'aaa'");
+        e17().insertColumns("id1", "id2", "name").values(1, 1, "aaa").exec();
 
         Response response = target("/e17")
                 .queryParam("id1", 1)
@@ -337,15 +300,15 @@ public class GET_IT extends JerseyTestOnDerby {
     }
 
     @Test
-    public void test_Select_MapByRootEntity() {
+    public void testMapByRootEntity() {
 
-        insert("e4", "c_varchar, c_int", "'xxx', 1");
-        insert("e4", "c_varchar, c_int", "'yyy', 2");
-        insert("e4", "c_varchar, c_int", "'zzz', 2");
+        e4().insertColumns("c_varchar", "c_int").values("xxx", 1)
+                .values("yyy", 2)
+                .values("zzz", 2).exec();
 
         Response response = target("/e4")
-                .queryParam("mapBy", E4.C_INT.getName())
-                .queryParam("include", E4.C_VARCHAR.getName())
+                .queryParam("mapBy", "cInt")
+                .queryParam("include", "cVarchar")
                 .request()
                 .get();
 
@@ -355,17 +318,20 @@ public class GET_IT extends JerseyTestOnDerby {
     }
 
     @Test
-    public void test_Select_MapByRootEntity_Related() {
+    public void testMapBy_RelatedId() {
 
-        insert("e2", "id, name", "1, 'zzz'");
-        insert("e2", "id, name", "2, 'yyy'");
-        insert("e3", "id, e2_id, name", "8,  1, 'aaa'");
-        insert("e3", "id, e2_id, name", "9,  1, 'bbb'");
-        insert("e3", "id, e2_id, name", "10, 2, 'ccc'");
+        e2().insertColumns("id_", "name")
+                .values(1, "zzz")
+                .values(2, "yyy").exec();
+
+        e3().insertColumns("id_", "name", "e2_id")
+                .values(8, "aaa", 1)
+                .values(9, "bbb", 1)
+                .values(10, "ccc", 2).exec();
 
         Response response = target("/e3")
-                .queryParam("mapBy", E3.E2.dot(E2.ID_PK_COLUMN).getName())
-                .queryParam("exclude", E3.PHONE_NUMBER.getName())
+                .queryParam("mapBy", "e2.id")
+                .queryParam("exclude", "phoneNumber")
                 .request()
                 .get();
 
@@ -375,9 +341,32 @@ public class GET_IT extends JerseyTestOnDerby {
     }
 
     @Test
-    public void test_SelectById_EscapeLineSeparators() {
+    public void testMapBy_OverRelationship() {
 
-        insert("e4", "id, c_varchar", "1, 'First line\u2028Second line...\u2029'");
+        e2().insertColumns("id_", "name")
+                .values(1, "zzz")
+                .values(2, "yyy").exec();
+
+        e3().insertColumns("id_", "name", "e2_id")
+                .values(8, "aaa", 1)
+                .values(9, "bbb", 1)
+                .values(10, "ccc", 2).exec();
+
+        Response response = target("/e3")
+                .queryParam("mapBy", "e2")
+                .queryParam("exclude", "phoneNumber")
+                .request()
+                .get();
+
+        onSuccess(response).bodyEqualsMapBy(3,
+                "\"1\":[{\"id\":8,\"name\":\"aaa\"},{\"id\":9,\"name\":\"bbb\"}]",
+                "\"2\":[{\"id\":10,\"name\":\"ccc\"}]");
+    }
+
+    @Test
+    public void testById_EscapeLineSeparators() {
+
+        e4().insertColumns("id", "c_varchar").values(1, "First line\u2028Second line...\u2029").exec();
 
         Response response = target("/e4/1")
                 .queryParam("include", "cVarchar")
@@ -388,14 +377,11 @@ public class GET_IT extends JerseyTestOnDerby {
     }
 
     @Test
-    public void test_SelectByteArrayProperty() throws IOException {
+    public void testByteArrayProperty() throws IOException {
 
-        ObjectContext ctx = newContext();
-        E19 e19 = ctx.newObject(E19.class);
-        e19.setGuid("someValue123".getBytes("UTF-8"));
-        ctx.commitChanges();
+        e19().insertColumns("id", "guid").values(35, "someValue123".getBytes("UTF-8")).exec();
 
-        Response response = target("/e19/" + Cayenne.intPKForObject(e19))
+        Response response = target("/e19/35")
                 .queryParam("include", E19.GUID.getName())
                 .request()
                 .get();

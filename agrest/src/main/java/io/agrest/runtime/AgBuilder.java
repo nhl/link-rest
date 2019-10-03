@@ -9,7 +9,7 @@ import io.agrest.EntityConstraint;
 import io.agrest.MetadataResponse;
 import io.agrest.SimpleResponse;
 import io.agrest.encoder.Encoder;
-import io.agrest.encoder.EncoderFilter;
+import io.agrest.encoder.EntityEncoderFilter;
 import io.agrest.encoder.PropertyMetadataEncoder;
 import io.agrest.encoder.converter.StringConverter;
 import io.agrest.meta.AgEntityOverlay;
@@ -36,6 +36,7 @@ import io.agrest.runtime.cayenne.processor.select.CayenneSelectProcessorFactoryP
 import io.agrest.runtime.cayenne.processor.unrelate.CayenneUnrelateDataStoreStage;
 import io.agrest.runtime.cayenne.processor.unrelate.CayenneUnrelateProcessorFactoryProvider;
 import io.agrest.runtime.cayenne.processor.unrelate.CayenneUnrelateStartStage;
+import io.agrest.runtime.cayenne.processor.update.CayenneApplyServerParamsStage;
 import io.agrest.runtime.cayenne.processor.update.CayenneCreateOrUpdateStage;
 import io.agrest.runtime.cayenne.processor.update.CayenneCreateStage;
 import io.agrest.runtime.cayenne.processor.update.CayenneCreatedResponseStage;
@@ -47,7 +48,9 @@ import io.agrest.runtime.cayenne.processor.update.CayenneUpdateStage;
 import io.agrest.runtime.cayenne.processor.update.CayenneUpdateStartStage;
 import io.agrest.runtime.constraints.ConstraintsHandler;
 import io.agrest.runtime.constraints.IConstraintsHandler;
-import io.agrest.runtime.encoder.AttributeEncoderFactoryProvider;
+import io.agrest.runtime.encoder.AttributeEncoderFactory;
+import io.agrest.runtime.encoder.ValueEncoders;
+import io.agrest.runtime.encoder.ValueEncodersProvider;
 import io.agrest.runtime.encoder.EncoderService;
 import io.agrest.runtime.encoder.IAttributeEncoderFactory;
 import io.agrest.runtime.encoder.IEncoderService;
@@ -55,9 +58,11 @@ import io.agrest.runtime.encoder.IStringConverterFactory;
 import io.agrest.runtime.encoder.StringConverterFactoryProvider;
 import io.agrest.runtime.entity.CayenneExpMerger;
 import io.agrest.runtime.entity.ExcludeMerger;
+import io.agrest.runtime.entity.ExpressionParser;
 import io.agrest.runtime.entity.ExpressionPostProcessor;
 import io.agrest.runtime.entity.ICayenneExpMerger;
 import io.agrest.runtime.entity.IExcludeMerger;
+import io.agrest.runtime.entity.IExpressionParser;
 import io.agrest.runtime.entity.IExpressionPostProcessor;
 import io.agrest.runtime.entity.IIncludeMerger;
 import io.agrest.runtime.entity.IMapByMerger;
@@ -95,19 +100,13 @@ import io.agrest.runtime.protocol.ICayenneExpParser;
 import io.agrest.runtime.protocol.IEntityUpdateParser;
 import io.agrest.runtime.protocol.IExcludeParser;
 import io.agrest.runtime.protocol.IIncludeParser;
-import io.agrest.runtime.protocol.IMapByParser;
 import io.agrest.runtime.protocol.ISizeParser;
 import io.agrest.runtime.protocol.ISortParser;
 import io.agrest.runtime.protocol.IncludeParser;
-import io.agrest.runtime.protocol.MapByParser;
 import io.agrest.runtime.protocol.SizeParser;
 import io.agrest.runtime.protocol.SortParser;
-import io.agrest.runtime.provider.CayenneExpProvider;
-import io.agrest.runtime.provider.ExcludeProvider;
-import io.agrest.runtime.provider.IncludeProvider;
-import io.agrest.runtime.provider.MapByProvider;
-import io.agrest.runtime.provider.SizeProvider;
-import io.agrest.runtime.provider.SortProvider;
+import io.agrest.runtime.request.DefaultRequestBuilderFactory;
+import io.agrest.runtime.request.IAgRequestBuilderFactory;
 import io.agrest.runtime.semantics.IRelationshipMapper;
 import io.agrest.runtime.semantics.RelationshipMapper;
 import io.agrest.runtime.shutdown.ShutdownManager;
@@ -145,7 +144,7 @@ public class AgBuilder {
     private List<Module> modules;
     private List<AgFeatureProvider> featureProviders;
     private List<Feature> features;
-    private List<EncoderFilter> encoderFilters;
+    private List<EntityEncoderFilter> entityEncoderFilters;
     private Map<String, AgEntityOverlay> entityOverlays;
     private Map<String, Class<? extends ExceptionMapper>> exceptionMappers;
     private Map<String, PropertyMetadataEncoder> metadataEncoders;
@@ -158,7 +157,7 @@ public class AgBuilder {
         this.autoLoadModules = true;
         this.autoLoadFeatures = true;
         this.entityOverlays = new HashMap<>();
-        this.encoderFilters = new ArrayList<>();
+        this.entityEncoderFilters = new ArrayList<>();
         this.agServiceType = DefaultAgService.class;
         this.cayenneService = NoCayennePersister.instance();
         this.exceptionMappers = new HashMap<>();
@@ -237,13 +236,41 @@ public class AgBuilder {
         return this;
     }
 
-    public AgBuilder encoderFilter(EncoderFilter filter) {
-        this.encoderFilters.add(filter);
+    /**
+     * @deprecated since 3.4 in favor of {@link #entityEncoderFilter(EntityEncoderFilter)}
+     */
+    @Deprecated
+    public AgBuilder encoderFilter(EntityEncoderFilter filter) {
+        return entityEncoderFilter(filter);
+    }
+
+    /**
+     * Installs a encoding filter that is applied to every request, altering response encoding. This method can be
+     * called multiple times to add more than one filter.
+     *
+     * @param filter a filter to apply when encoding individual entities
+     * @return this builder instance
+     * @see io.agrest.SelectBuilder#entityEncoderFilter(EntityEncoderFilter)
+     * @since 3.4
+     */
+    public AgBuilder entityEncoderFilter(EntityEncoderFilter filter) {
+        this.entityEncoderFilters.add(filter);
         return this;
     }
 
-    public AgBuilder encoderFilters(Collection<EncoderFilter> filters) {
-        this.encoderFilters.addAll(filters);
+    /**
+     * @deprecated since 3.4 in favor of {@link #entityEncoderFilters(Collection)}
+     */
+    @Deprecated
+    public AgBuilder encoderFilters(Collection<EntityEncoderFilter> filters) {
+        return entityEncoderFilters(filters);
+    }
+
+    /**
+     * @since 3.4
+     */
+    public AgBuilder entityEncoderFilters(Collection<EntityEncoderFilter> filters) {
+        this.entityEncoderFilters.addAll(filters);
         return this;
     }
 
@@ -279,6 +306,7 @@ public class AgBuilder {
      * Adds a descriptor of extra properties of a particular entity. If multiple overlays are registered for the
      * same entity, they are merged together. If they have overlapping properties, the last overlay wins.
      *
+     * @see io.agrest.SelectBuilder#entityOverlay(AgEntityOverlay)
      * @since 2.10
      */
     public <T> AgBuilder entityOverlay(AgEntityOverlay<T> overlay) {
@@ -427,7 +455,7 @@ public class AgBuilder {
 
         return binder -> {
 
-            binder.bindList(EncoderFilter.class).addAll(encoderFilters);
+            binder.bindList(EntityEncoderFilter.class).addAll(entityEncoderFilters);
 
             binder.bind(CayenneEntityCompiler.class).to(CayenneEntityCompiler.class);
             binder.bind(PojoEntityCompiler.class).to(PojoEntityCompiler.class);
@@ -481,8 +509,8 @@ public class AgBuilder {
                     .to(io.agrest.runtime.processor.update.ParseRequestStage.class);
             binder.bind(io.agrest.runtime.processor.update.CreateResourceEntityStage.class)
                     .to(io.agrest.runtime.processor.update.CreateResourceEntityStage.class);
-            binder.bind(io.agrest.runtime.processor.update.ApplyServerParamsStage.class)
-                    .to(io.agrest.runtime.processor.update.ApplyServerParamsStage.class);
+            binder.bind(CayenneApplyServerParamsStage.class)
+                    .to(CayenneApplyServerParamsStage.class);
             binder.bind(CayenneCreateStage.class).to(CayenneCreateStage.class);
             binder.bind(CayenneUpdateStage.class).to(CayenneUpdateStage.class);
             binder.bind(CayenneCreateOrUpdateStage.class).to(CayenneCreateOrUpdateStage.class);
@@ -502,7 +530,8 @@ public class AgBuilder {
 
             // a map of custom encoders
             binder.bindMap(Encoder.class);
-            binder.bind(IAttributeEncoderFactory.class).toProvider(AttributeEncoderFactoryProvider.class);
+            binder.bind(IAttributeEncoderFactory.class).to(AttributeEncoderFactory.class);
+            binder.bind(ValueEncoders.class).toProvider(ValueEncodersProvider.class);
 
             // a map of custom converters
             binder.bindMap(StringConverter.class);
@@ -513,6 +542,7 @@ public class AgBuilder {
             binder.bind(IMetadataService.class).to(MetadataService.class);
             binder.bind(IResourceMetadataService.class).to(ResourceMetadataService.class);
             binder.bind(IConstraintsHandler.class).to(ConstraintsHandler.class);
+            binder.bind(IExpressionParser.class).to(ExpressionParser.class);
             binder.bind(IExpressionPostProcessor.class).to(ExpressionPostProcessor.class);
 
             binder.bind(IJacksonService.class).to(JacksonService.class);
@@ -522,21 +552,13 @@ public class AgBuilder {
 
             // Query parameter parsers from the UriInfo
             binder.bind(ICayenneExpParser.class).to(CayenneExpParser.class);
-            binder.bind(IMapByParser.class).to(MapByParser.class);
             binder.bind(ISizeParser.class).to(SizeParser.class);
             binder.bind(ISortParser.class).to(SortParser.class);
             binder.bind(IExcludeParser.class).to(ExcludeParser.class);
             binder.bind(IIncludeParser.class).to(IncludeParser.class);
 
-            // Converter providers to get value objects from explicit query parameters
-            binder.bind(CayenneExpProvider.class).to(CayenneExpProvider.class);
-            binder.bind(IncludeProvider.class).to(IncludeProvider.class);
-            binder.bind(ExcludeProvider.class).to(ExcludeProvider.class);
-            binder.bind(SortProvider.class).to(SortProvider.class);
-            binder.bind(MapByProvider.class).to(MapByProvider.class);
-            binder.bind(SizeProvider.class).to(SizeProvider.class);
+            binder.bind(IAgRequestBuilderFactory.class).to(DefaultRequestBuilderFactory.class);
 
-            // Constructors to create ResourceEntity from Query parameters
             binder.bind(ICayenneExpMerger.class).to(CayenneExpMerger.class);
             binder.bind(ISortMerger.class).to(SortMerger.class);
             binder.bind(IMapByMerger.class).to(MapByMerger.class);

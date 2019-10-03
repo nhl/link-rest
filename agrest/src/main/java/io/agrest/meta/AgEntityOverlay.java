@@ -1,6 +1,5 @@
 package io.agrest.meta;
 
-import io.agrest.annotation.AgId;
 import io.agrest.meta.compiler.BeanAnalyzer;
 import io.agrest.meta.compiler.PropertyGetter;
 import io.agrest.property.PropertyReader;
@@ -9,7 +8,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
-import java.util.stream.Stream;
 
 /**
  * A mutable collection of entity properties that are not derived from the object structure. {@link AgEntityOverlay}
@@ -21,13 +19,18 @@ public class AgEntityOverlay<T> {
 
     private Class<T> type;
     private Map<String, AgAttribute> attributes;
-    private Map<String, Function<AgDataMap, AgRelationship>> relationships;
+    private Map<String, AgRelationshipOverlay> relationships;
     private Map<String, PropertyGetter> typeGetters;
 
     public AgEntityOverlay(Class<T> type) {
         this.type = type;
         this.attributes = new HashMap<>();
         this.relationships = new HashMap<>();
+    }
+
+    // lose generics ... PropertyReader is not parameterized
+    private static PropertyReader asPropertyReader(Function reader) {
+        return (o, n) -> reader.apply(o);
     }
 
     /**
@@ -44,6 +47,13 @@ public class AgEntityOverlay<T> {
     }
 
     /**
+     * @since 3.4
+     */
+    public AgAttribute getAttribute(String name) {
+        return attributes.get(name);
+    }
+
+    /**
      * @since 2.10
      */
     public Iterable<AgAttribute> getAttributes() {
@@ -51,11 +61,17 @@ public class AgEntityOverlay<T> {
     }
 
     /**
-     * @since 2.10
+     * @since 3.4
      */
-    public Stream<AgRelationship> getRelatonships(AgDataMap dataMap) {
-        // resolve relationship targets
-        return relationships.values().stream().map(f -> f.apply(dataMap));
+    public AgRelationshipOverlay getRelationship(String name) {
+        return relationships.get(name);
+    }
+
+    /**
+     * @since 3.4
+     */
+    public Iterable<AgRelationshipOverlay> getRelationships() {
+        return relationships.values();
     }
 
     private Map<String, PropertyGetter> getTypeGetters() {
@@ -64,7 +80,8 @@ public class AgEntityOverlay<T> {
         if (this.typeGetters == null) {
             Map<String, PropertyGetter> getters = new HashMap<>();
 
-            // this is expensive... still not caching, as presumably overlays are processed only once
+            // TODO: this is expensive, and since #422 this may be called per-request..
+            //  Need either a stack-scoped caching strategy or deprecating the caller - "addAttribute"
             BeanAnalyzer.findGetters(type).forEach(pm -> getters.put(pm.getName(), pm));
 
             this.typeGetters = getters;
@@ -74,11 +91,8 @@ public class AgEntityOverlay<T> {
     }
 
     /**
-     * Adds an attribute to the overlaid entity. The value of the attribute will be read from the object itself.
-     * This overlay is only needed if Agrest can't otherwise determine property presence in the entity.
-     * An alternative to calling this method explicitly is annotating property getters with
-     * {@link io.agrest.annotation.AgAttribute}, {@link io.agrest.annotation.AgRelationship} or
-     * {@link AgId}. Also all Cayenne attributes are automatically added to the entity.
+     * Adds an attribute to the overlaid entity. Type and value reader are determined via class introspection, so this
+     * method may be quite slow. Consider using {@link #addAttribute(String, Class, Function)} instead.
      *
      * @since 2.10
      */
@@ -97,50 +111,37 @@ public class AgEntityOverlay<T> {
 
     /**
      * Adds an "ad-hoc" attribute to the overlaid entity. The value of the attribute will be calculated from
-     * each entity object by applying the "valueSupplier" function. This allows Agrest entities
+     * each entity object by applying the "reader" function. This allows Agrest entities
      * to declare properties not present in the underlying Java objects.
      *
      * @since 2.10
      */
-    public <V> AgEntityOverlay<T> addAttribute(String name, Class<V> valueType, Function<T, V> valueSupplier) {
-        PropertyReader reader = PropertyReader.forValueProducer(valueSupplier);
-        attributes.put(name, new DefaultAgAttribute(name, valueType, reader));
+    public <V> AgEntityOverlay<T> addAttribute(String name, Class<V> valueType, Function<T, V> reader) {
+        attributes.put(name, new DefaultAgAttribute(name, valueType, asPropertyReader(reader)));
         return this;
     }
 
     /**
      * Adds an "ad-hoc" to-one relationship to the overlaid entity. The value of the relationship will be
-     * calculated from each entity object by applying the "valueSupplier" function. This allows Agrest entities
+     * calculated from each entity object by applying the "reader" function. This allows Agrest entities
      * to declare properties not present in the underlying Java objects.
      *
      * @since 2.10
      */
-    public <V> AgEntityOverlay<T> addToOneRelationship(String name, Class<V> valueType, Function<T, V> valueSupplier) {
-        relationships.put(name, dm -> resolveToOne(dm, name, valueType, valueSupplier));
+    public <V> AgEntityOverlay<T> addToOneRelationship(String name, Class<V> targetType, Function<T, V> reader) {
+        relationships.put(name, new DefaultAgRelationshipOverlay(name, targetType, false, e -> asPropertyReader(reader)));
         return this;
     }
 
     /**
      * Adds an "ad-hoc" to-many relationship to the overlaid entity. The value of the relationship will be
-     * calculated from each entity object by applying the "valueSupplier" function. This allows Agrest entities
+     * calculated from each entity object by applying the "reader" function. This allows Agrest entities
      * to declare properties not present in the underlying Java objects.
      *
      * @since 2.10
      */
-    public <V> AgEntityOverlay<T> addToManyRelationship(String name, Class<V> valueType, Function<T, List<V>> valueSupplier) {
-        relationships.put(name, dm -> resolveToMany(dm, name, valueType, valueSupplier));
+    public <V> AgEntityOverlay<T> addToManyRelationship(String name, Class<V> targetType, Function<T, List<V>> reader) {
+        relationships.put(name, new DefaultAgRelationshipOverlay(name, targetType, true, e -> asPropertyReader(reader)));
         return this;
-    }
-
-    private <V> AgRelationship resolveToOne(AgDataMap dataMap, String name, Class<V> type, Function<T, V> valueSupplier) {
-        AgEntity<V> target = dataMap.getEntity(type);
-        PropertyReader reader = PropertyReader.forValueProducer(valueSupplier);
-        return new DefaultAgRelationship(name, target, false, reader);
-    }
-
-    private <V> AgRelationship resolveToMany(AgDataMap dataMap, String name, Class<V> type, Function<T, List<V>> valueSupplier) {
-        AgEntity<V> target = dataMap.getEntity(type);
-        PropertyReader reader = PropertyReader.forValueProducer(valueSupplier);
-        return new DefaultAgRelationship(name, target, true, reader);
     }
 }

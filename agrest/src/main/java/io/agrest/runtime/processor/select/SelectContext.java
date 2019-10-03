@@ -1,218 +1,269 @@
 package io.agrest.runtime.processor.select;
 
+import io.agrest.AgObjectId;
 import io.agrest.AgRequest;
 import io.agrest.CompoundObjectId;
 import io.agrest.DataResponse;
 import io.agrest.EntityParent;
 import io.agrest.EntityProperty;
-import io.agrest.AgObjectId;
 import io.agrest.ResourceEntity;
 import io.agrest.SimpleObjectId;
 import io.agrest.SizeConstraints;
 import io.agrest.constraints.Constraint;
 import io.agrest.encoder.Encoder;
+import io.agrest.encoder.EntityEncoderFilter;
+import io.agrest.meta.AgEntityOverlay;
 import io.agrest.processor.BaseProcessingContext;
 
 import javax.ws.rs.core.UriInfo;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
  * Maintains state of the request processing chain for select requests.
- * 
+ *
  * @since 1.16
  */
 public class SelectContext<T> extends BaseProcessingContext<T> {
 
-	private AgObjectId id;
-	private EntityParent<?> parent;
-	private ResourceEntity<T> entity;
-	private UriInfo uriInfo;
-	private Map<String, EntityProperty> extraProperties;
-	private SizeConstraints sizeConstraints;
-	private Constraint<T> constraint;
-	private boolean atMostOneObject;
-	private Encoder encoder;
-	private AgRequest rawRequest;
-	private AgRequest request;
+    private AgObjectId id;
+    private EntityParent<?> parent;
+    private ResourceEntity<T> entity;
+    private UriInfo uriInfo;
+    private Map<String, EntityProperty> extraProperties;
+    private SizeConstraints sizeConstraints;
+    private Constraint<T> constraint;
+    private boolean atMostOneObject;
+    private Encoder encoder;
+    private AgRequest mergedRequest;
+    private AgRequest request;
+    private List<EntityEncoderFilter> entityEncoderFilters;
+    private Map<Class<?>, AgEntityOverlay<?>> entityOverlays;
+
+    public SelectContext(Class<T> type) {
+        super(type);
+    }
+
+    /**
+     * Returns a new response object reflecting the context state.
+     *
+     * @return a new response object reflecting the context state.
+     * @since 1.24
+     */
+    public DataResponse<T> createDataResponse() {
+        List<? extends T> objects = this.entity != null ? this.entity.getResult() : Collections.<T>emptyList();
+        DataResponse<T> response = DataResponse.forType(getType());
+        response.setObjects(objects);
+        response.setEncoder(encoder);
+        response.setStatus(getStatus());
+        return response;
+    }
+
+    public boolean isById() {
+        return id != null;
+    }
+
+    public AgObjectId getId() {
+        return id;
+    }
+
+    public void setId(Object id) {
+        this.id = new SimpleObjectId(id);
+    }
+
+    public void setCompoundId(Map<String, Object> ids) {
+        this.id = new CompoundObjectId(ids);
+    }
+
+    public EntityParent<?> getParent() {
+        return parent;
+    }
+
+    public void setParent(EntityParent<?> parent) {
+        this.parent = parent;
+    }
+
+    public UriInfo getUriInfo() {
+        return uriInfo;
+    }
+
+    public void setUriInfo(UriInfo uriInfo) {
+        this.uriInfo = uriInfo;
+    }
+
+    /**
+     * @since 2.5
+     */
+    public Map<String, List<String>> getProtocolParameters() {
+        return uriInfo != null ? uriInfo.getQueryParameters() : Collections.emptyMap();
+    }
+
+    public Map<String, EntityProperty> getExtraProperties() {
+        return extraProperties;
+    }
+
+    public void setExtraProperties(Map<String, EntityProperty> extraProperties) {
+        this.extraProperties = extraProperties;
+    }
+
+    /**
+     * @since 3.4
+     */
+    public List<EntityEncoderFilter> getEntityEncoderFilters() {
+        return entityEncoderFilters;
+    }
+
+    /**
+     * @since 3.4
+     */
+    public void setEntityEncoderFilters(List<EntityEncoderFilter> entityEncoderFilters) {
+        this.entityEncoderFilters = entityEncoderFilters;
+    }
+
+    /**
+     * @since 3.4
+     */
+    public Map<Class<?>, AgEntityOverlay<?>> getEntityOverlays() {
+        return entityOverlays != null ? entityOverlays : Collections.emptyMap();
+    }
+
+    /**
+     * @since 3.4
+     */
+    public <A> AgEntityOverlay<A> getEntityOverlay(Class<A> type) {
+        return entityOverlays != null ? (AgEntityOverlay<A>) entityOverlays.get(type) : null;
+    }
+
+    /**
+     * @since 3.4
+     */
+    public <A> void addEntityOverlay(AgEntityOverlay<A> overlay) {
+        getOrCreateOverlay(overlay.getType()).merge(overlay);
+    }
+
+    private <A> AgEntityOverlay<A> getOrCreateOverlay(Class<A> type) {
+        if (entityOverlays == null) {
+            entityOverlays = new HashMap<>();
+        }
+
+        return (AgEntityOverlay<A>) entityOverlays.computeIfAbsent(type, t -> new AgEntityOverlay<>(t));
+    }
+
+    public SizeConstraints getSizeConstraints() {
+        return sizeConstraints;
+    }
+
+    public void setSizeConstraints(SizeConstraints sizeConstraints) {
+        this.sizeConstraints = sizeConstraints;
+    }
 
 
-	public SelectContext(Class<T> type) {
-		super(type);
-	}
+    /**
+     * @return this context's constraint function.
+     * @since 2.4
+     */
+    public Constraint<T> getConstraint() {
+        return constraint;
+    }
 
-	/**
-	 * Returns a new response object reflecting the context state.
-	 * 
-	 * @since 1.24
-	 * @return a new response object reflecting the context state.
-	 */
-	public DataResponse<T> createDataResponse() {
-		List<? extends T> objects = this.entity != null ? this.entity.getResult() : Collections.<T> emptyList();
-		DataResponse<T> response = DataResponse.forType(getType());
-		response.setObjects(objects);
-		response.setEncoder(encoder);
-		response.setStatus(getStatus());
-		return response;
-	}
+    /**
+     * @param constraint constraint function.
+     * @since 2.4
+     */
+    public void setConstraint(Constraint<T> constraint) {
+        this.constraint = constraint;
+    }
 
-	public boolean isById() {
-		return id != null;
-	}
+    public boolean isAtMostOneObject() {
+        return atMostOneObject;
+    }
 
-	public AgObjectId getId() {
-		return id;
-	}
+    public void setAtMostOneObject(boolean expectingOne) {
+        this.atMostOneObject = expectingOne;
+    }
 
-	public void setId(Object id) {
-		this.id = new SimpleObjectId(id);
-	}
+    public Encoder getEncoder() {
+        return encoder;
+    }
 
-	public void setCompoundId(Map<String, Object> ids) {
-		this.id = new CompoundObjectId(ids);
-	}
+    public void setEncoder(Encoder encoder) {
+        this.encoder = encoder;
+    }
 
-	public EntityParent<?> getParent() {
-		return parent;
-	}
+    /**
+     * @since 1.20
+     */
+    public ResourceEntity<T> getEntity() {
+        return entity;
+    }
 
-	public void setParent(EntityParent<?> parent) {
-		this.parent = parent;
-	}
+    /**
+     * @since 1.20
+     */
+    public void setEntity(ResourceEntity<T> entity) {
+        this.entity = entity;
+    }
 
-	public UriInfo getUriInfo() {
-		return uriInfo;
-	}
+    /**
+     * Returns AgRequest instance that is the source of request data for {@link io.agrest.SelectStage#CREATE_ENTITY}
+     * stage that produces a tree of {@link ResourceEntity} instances. Usually merged request is a result of merging
+     * context AgRequest with URL parameters during {@link io.agrest.SelectStage#PARSE_REQUEST} stage.
+     *
+     * @since 3.2
+     */
+    public AgRequest getMergedRequest() {
+        return mergedRequest;
+    }
 
-	/**
-	 * @since 2.5
-	 */
-	public Map<String, List<String>> getProtocolParameters() {
-		return uriInfo != null ? uriInfo.getQueryParameters() : Collections.emptyMap();
-	}
+    /**
+     * Sets AgRequest instance that is the source of request data for {@link io.agrest.SelectStage#CREATE_ENTITY} stage
+     * to create a tree of {@link ResourceEntity} instances.
+     *
+     * @since 3.2
+     */
+    public void setMergedRequest(AgRequest request) {
+        this.mergedRequest = request;
+    }
 
-	public void setUriInfo(UriInfo uriInfo) {
-		this.uriInfo = uriInfo;
-	}
+    /**
+     * Returns a request object, previously explicitly passed to the select chain in the endpoint method. Depending on
+     * the calling chain configuration, this object is either used directly to serve the request, or is combined with
+     * URL parameters during {@link io.agrest.SelectStage#PARSE_REQUEST}, producing a "mergedRequest".
+     *
+     * @since 2.13
+     */
+    public AgRequest getRequest() {
+        return request;
+    }
 
-	public Map<String, EntityProperty> getExtraProperties() {
-		return extraProperties;
-	}
+    /**
+     * Sets a request object. Depending on the calling chain configuration, this object is either used directly to
+     * serve the request, or is combined with URL parameters during {@link io.agrest.SelectStage#PARSE_REQUEST},
+     * producing a "mergedRequest".
+     *
+     * @since 2.13
+     */
+    public void setRequest(AgRequest request) {
+        this.request = request;
+    }
 
-	public void setExtraProperties(Map<String, EntityProperty> extraProperties) {
-		this.extraProperties = extraProperties;
-	}
+    /**
+     * @since 2.13
+     * @deprecated since 3.2 in favor of {@link #getMergedRequest()}.
+     */
+    @Deprecated
+    public AgRequest getRawRequest() {
+        return getMergedRequest();
+    }
 
-	public SizeConstraints getSizeConstraints() {
-		return sizeConstraints;
-	}
-
-	public void setSizeConstraints(SizeConstraints sizeConstraints) {
-		this.sizeConstraints = sizeConstraints;
-	}
-
-
-	/**
-	 * @since 2.4
-	 * @return this context's constraint function.
-	 */
-	public Constraint<T> getConstraint() {
-		return constraint;
-	}
-
-	/**
-	 * @since 2.4
-	 * @param constraint constraint function.
-	 */
-	public void setConstraint(Constraint<T> constraint) {
-		this.constraint = constraint;
-	}
-
-	public boolean isAtMostOneObject() {
-		return atMostOneObject;
-	}
-
-	public void setAtMostOneObject(boolean expectingOne) {
-		this.atMostOneObject = expectingOne;
-	}
-
-	public Encoder getEncoder() {
-		return encoder;
-	}
-
-	public void setEncoder(Encoder encoder) {
-		this.encoder = encoder;
-	}
-
-	/**
-	 * @since 1.20
-	 */
-	public ResourceEntity<T> getEntity() {
-		return entity;
-	}
-
-	/**
-	 * @since 1.20
-	 */
-	public void setEntity(ResourceEntity<T> entity) {
-		this.entity = entity;
-	}
-
-	/**
-	 * Returns AgRequest that contains query parameters.
-	 * This parameters are used on the CreateEntityStage to create an entity.
-	 *
-	 * @since 2.13
-	 */
-	public AgRequest getRawRequest() {
-		return rawRequest;
-	}
-
-	/**
-	 * Saves AgRequest that contains query parameters.
-	 *
-	 * This AgRequest object is build from two sources.
-	 * 1. Parse UriInfo and create query parameters objects.
-	 * 2. If some of query parameters are passed explicitly they will be used instead of parsing from UriInfo.
-	 * These explicit query parameters are saved in rawRequest object during ParseRequestStage.
-	 *
-	 * @since 2.13
-	 */
-	public void setRawRequest(AgRequest request) {
-		this.rawRequest = request;
-	}
-
-	/**
-	 * Returns AgRequest object that contains query parameters explicitly passed through API method call
-	 *
-	 * @since 2.13
-	 */
-	public AgRequest getRequest() {
-		return request;
-	}
-
-	/**
-	 * Saves AgRequest object that contains query parameters explicitly passed through API method call
-	 * These parameters are created during ConvertQueryParamsStage
-	 *
-	 * <pre>{@code
-	 *
-	 * 		public DataResponse<E2> getE2(@Context UriInfo uriInfo, @QueryParam CayenneExp cayenneExp) {
-	 * 			// Explicit query parameter
-	 * 			AgRequest agRequest = AgRequest.builder().cayenneExp(cayenneExp).build();
-	 *
-	 * 			return Ag.service(config).select(E2.class)
-	 * 							.uri(uriInfo)
-	 * 							.request(agRequest) // overrides parameters from uriInfo
-	 * 							.get();
-	 * 		}
-	 *
-	 * }</pre>
-	 *
-	 * @since 2.13
-	 */
-	public void setRequest(AgRequest request) {
-		this.request = request;
-	}
+    /**
+     * @since 2.13
+     * @deprecated since 3.2 in favor of {@link #setMergedRequest(AgRequest)}
+     */
+    @Deprecated
+    public void setRawRequest(AgRequest request) {
+        setMergedRequest(request);
+    }
 }

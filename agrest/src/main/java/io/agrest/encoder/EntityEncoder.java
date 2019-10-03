@@ -1,80 +1,33 @@
 package io.agrest.encoder;
 
-import java.io.IOException;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.TreeMap;
-
 import com.fasterxml.jackson.core.JsonGenerator;
 import io.agrest.EntityProperty;
 import io.agrest.PathConstants;
 
-public class EntityEncoder extends AbstractEncoder {
+import java.io.IOException;
+import java.util.Map;
 
-	private EntityProperty idEncoder;
-	private Map<String, EntityProperty> relationshipEncoders;
-	private Map<String, EntityProperty> combinedEncoders;
+public class EntityEncoder extends EntityNoIdEncoder {
 
-	public EntityEncoder(EntityProperty idEncoder, Map<String, EntityProperty> attributeEncoders,
-			Map<String, EntityProperty> relationshipEncoders, Map<String, EntityProperty> extraEncoders) {
+    private EntityProperty idProperty;
 
-		this.idEncoder = idEncoder;
+    public EntityEncoder(
+            EntityProperty idProperty,
+            Map<String, EntityProperty> attributeEncoders,
+            Map<String, EntityProperty> relationshipEncoders,
+            Map<String, EntityProperty> extraEncoders) {
 
-		// tracking relationship encoders separately for the sake of the
-		// visitors
-		this.relationshipEncoders = relationshipEncoders;
+        super(attributeEncoders, relationshipEncoders, extraEncoders);
+        this.idProperty = idProperty;
+    }
 
-		this.combinedEncoders = new TreeMap<>();
-		combinedEncoders.putAll(attributeEncoders);
-		combinedEncoders.putAll(relationshipEncoders);
-		combinedEncoders.putAll(extraEncoders);
-	}
+    protected void encodeProperties(Object object, JsonGenerator out) throws IOException {
+        encodeId(object, out);
+        super.encodeProperties(object, out);
+    }
 
-	@Override
-	protected boolean encodeNonNullObject(Object object, JsonGenerator out) throws IOException {
-
-		out.writeStartObject();
-
-		idEncoder.encode(object, PathConstants.ID_PK_ATTRIBUTE, out);
-
-		for (Entry<String, EntityProperty> e : combinedEncoders.entrySet()) {
-			e.getValue().encode(object, e.getKey(), out);
-		}
-
-		out.writeEndObject();
-		return true;
-	}
-
-	@Override
-	public int visitEntities(Object object, EncoderVisitor visitor) {
-
-		if (object == null || !willEncode(null, object)) {
-			return VISIT_CONTINUE;
-		}
-
-		int bitmask = visitor.visit(object);
-
-		if ((bitmask & VISIT_SKIP_ALL) != 0) {
-			return VISIT_SKIP_ALL;
-		}
-
-		if ((bitmask & VISIT_SKIP_CHILDREN) == 0) {
-
-			for (Entry<String, EntityProperty> e : relationshipEncoders.entrySet()) {
-
-				visitor.push(e.getKey());
-
-				int propBitmask = e.getValue().visit(object, e.getKey(), visitor);
-
-				if ((propBitmask & VISIT_SKIP_ALL) != 0) {
-					return VISIT_SKIP_ALL;
-				}
-
-				visitor.pop();
-			}
-
-		}
-
-		return VISIT_CONTINUE;
-	}
+    protected void encodeId(Object object, JsonGenerator out) throws IOException {
+        Object v = object == null ? null : idProperty.getReader().value(object, PathConstants.ID_PK_ATTRIBUTE);
+        idProperty.getEncoder().encode(PathConstants.ID_PK_ATTRIBUTE, v, out);
+    }
 }

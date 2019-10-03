@@ -5,12 +5,12 @@
 	<parent>
 		<groupId>io.agrest</groupId>
 		<artifactId>agrest-parent</artifactId>
-		<version>3.2-SNAPSHOT</version>
+		<version>3.4-SNAPSHOT</version>
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 
 	<artifactId>agrest-sencha</artifactId>
-	<name>agrest-sencha: Sencha/ExtJS Integration for Agrest</name>
+	<name>agrest-sencha: Sencha/ExtJS extensions</name>
 	<description>Sencha/ExtJS Integration for Agrest</description>
 
 	<dependencies>
@@ -33,6 +33,28 @@
 			<artifactId>mockito-all</artifactId>
 			<scope>test</scope>
 		</dependency>
+
+		<dependency>
+			<groupId>io.bootique</groupId>
+			<artifactId>bootique-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.bootique.jersey</groupId>
+			<artifactId>bootique-jersey</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.bootique.cayenne</groupId>
+			<artifactId>bootique-cayenne-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.bootique.jdbc</groupId>
+			<artifactId>bootique-jdbc-hikaricp</artifactId>
+			<scope>test</scope>
+		</dependency>
+
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-simple</artifactId>
@@ -43,31 +65,6 @@
 			<artifactId>agrest</artifactId>
             <type>test-jar</type>
 			<version>${project.version}</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.glassfish.jersey.test-framework</groupId>
-			<artifactId>jersey-test-framework-core</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.glassfish.jersey.test-framework.providers</groupId>
-			<artifactId>jersey-test-framework-provider-inmemory</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.glassfish.jersey.inject</groupId>
-			<artifactId>jersey-hk2</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.derby</groupId>
-			<artifactId>derby</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>commons-io</groupId>
-			<artifactId>commons-io</artifactId>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>

@@ -3,34 +3,52 @@ package io.agrest.sencha.encoder;
 import com.fasterxml.jackson.core.JsonGenerator;
 import io.agrest.EntityProperty;
 import io.agrest.encoder.Encoder;
-import io.agrest.encoder.EntityToOneEncoder;
 
 import java.io.IOException;
 
-public abstract class SenchaEntityToOneEncoder extends EntityToOneEncoder {
+public class SenchaEntityToOneEncoder implements Encoder {
 
-	private EntityProperty idEncoder;
+    private Encoder objectEncoder;
+    private EntityProperty idEncoder;
+    private String idPropertyName;
 
-	public SenchaEntityToOneEncoder(Encoder objectEncoder, EntityProperty idEncoder) {
-		super(objectEncoder);
-		this.idEncoder = idEncoder;
-	}
 
-	@Override
-	public boolean encode(String propertyName, Object object, JsonGenerator out) throws IOException {
-		if (!super.encode(propertyName, object, out)) {
-			return false;
-		}
+    public SenchaEntityToOneEncoder(String idPropertyName, Encoder objectEncoder, EntityProperty idEncoder) {
+        this.idPropertyName = idPropertyName;
+        this.objectEncoder = objectEncoder;
+        this.idEncoder = idEncoder;
+    }
 
-		// encode FK as 'xyz_id' property
-		if (propertyName != null) {
-			String idPropertyName = idPropertyName(propertyName);
-			idEncoder.encode(object, idPropertyName, out);
-		}
+    @Override
+    public boolean encode(String propertyName, Object object, JsonGenerator out) throws IOException {
+        if (!objectEncoder.encode(propertyName, object, out)) {
+            return false;
+        }
 
-		return true;
-	}
+        // encode FK as 'xyz_id' property
+        encodeId(object, propertyName, out);
 
-	protected abstract String idPropertyName(String propertyName);
+        return true;
+    }
 
+    @Override
+    public boolean willEncode(String propertyName, Object object) {
+        return true;
+    }
+
+    protected String idPropertyName(String propertyName) {
+        // we know that created encoder will only be used for encoding a
+        // single known property, so hardcode the ID property to avoid
+        // relationshipMapper lookups in a loop
+        return idPropertyName;
+    }
+
+    protected void encodeId(Object object, String propertyName, JsonGenerator out) throws IOException {
+        if (propertyName != null) {
+            String idPropertyName = idPropertyName(propertyName);
+
+            Object v = object == null ? null : idEncoder.getReader().value(object, idPropertyName);
+            idEncoder.getEncoder().encode(idPropertyName, v, out);
+        }
+    }
 }

@@ -5,21 +5,21 @@
 	<parent>
 		<groupId>io.agrest</groupId>
 		<artifactId>agrest-parent</artifactId>
-		<version>3.2-SNAPSHOT</version>
+		<version>3.4-SNAPSHOT</version>
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 
 	<groupId>io.agrest.docs</groupId>
 	<artifactId>agrest-docs</artifactId>
-	<name>agrest-docs: Asciidoc documentation</name>
+	<name>agrest-docs: parent of AsciiDoc documentation</name>
 	<description>Agrest framework documentation</description>
 	<packaging>pom</packaging>
 
     <modules>
-        <module>agrest-overview</module>
-        <module>agrest-protocol</module>
-        <module>agrest-framework</module>
-        <module>agrest-workflow</module>
+        <module>agrest-docs-overview</module>
+        <module>agrest-docs-protocol</module>
+        <module>agrest-docs-framework</module>
+        <module>agrest-docs-workflow</module>
     </modules>
 
     <properties>

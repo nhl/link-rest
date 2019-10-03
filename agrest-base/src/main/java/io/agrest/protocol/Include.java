@@ -2,6 +2,7 @@ package io.agrest.protocol;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Represents 'include' Agrest protocol parameter.
@@ -10,38 +11,34 @@ import java.util.List;
  */
 public class Include {
 
-    private String value;
     private CayenneExp cayenneExp;
-    private Sort sort;
-    private MapBy mapBy;
+    private List<Sort> orderings;
+    private String mapBy;
     private String path;
-    private Start start;
-    private Limit limit;
-    private List<Include> includes;
+    private Integer start;
+    private Integer limit;
 
-    public Include(String value) {
-        this.value = value;
+    public Include(String path) {
+        this(path, null, Collections.emptyList(), null, null, null);
     }
 
-    public Include(List<Include> includes) {
-        this.includes = includes;
-    }
+    public Include(
+            String path,
+            CayenneExp cayenneExp,
+            List<Sort> orderings,
+            String mapBy,
+            Integer start,
+            Integer limit) {
 
-    public Include(CayenneExp cayenneExp, Sort sort, MapBy mapBy, String path, Start start, Limit limit, List<Include> includes) {
+        this.path = Objects.requireNonNull(path);
         this.cayenneExp = cayenneExp;
-        this.sort = sort;
+        this.orderings = Objects.requireNonNull(orderings);
         this.mapBy = mapBy;
-        this.path = path;
         this.start = start;
         this.limit = limit;
-        this.includes = includes;
     }
 
-    public String getValue() {
-        return value;
-    }
-
-    public MapBy getMapBy() {
+    public String getMapBy() {
         return mapBy;
     }
 
@@ -49,11 +46,11 @@ public class Include {
         return path;
     }
 
-    public Start getStart() {
+    public Integer getStart() {
         return start;
     }
 
-    public Limit getLimit() {
+    public Integer getLimit() {
         return limit;
     }
 
@@ -61,11 +58,12 @@ public class Include {
         return cayenneExp;
     }
 
-    public Sort getSort() {
-        return sort;
+    public List<Sort> getOrderings() {
+        return orderings;
     }
 
-    public List<Include> getIncludes() {
-        return includes != null ? includes : Collections.emptyList();
+    @Override
+    public String toString() {
+        return "[Include:" + path + "]";
     }
 }

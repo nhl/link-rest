@@ -2,21 +2,20 @@ package io.agrest.unit;
 
 import io.agrest.ResourceEntity;
 import io.agrest.meta.AgEntity;
+import io.agrest.meta.AgRelationship;
 import io.agrest.meta.DefaultAgAttribute;
-import io.agrest.meta.AgPersistentAttribute;
 import io.agrest.meta.cayenne.CayenneEntityCompiler;
 import io.agrest.meta.compiler.AgEntityCompiler;
 import io.agrest.meta.compiler.PojoEntityCompiler;
 import io.agrest.meta.parser.IResourceParser;
 import io.agrest.meta.parser.ResourceParser;
+import io.agrest.property.BeanPropertyReader;
 import io.agrest.runtime.cayenne.ICayennePersister;
 import io.agrest.runtime.meta.BaseUrlProvider;
 import io.agrest.runtime.meta.IMetadataService;
 import io.agrest.runtime.meta.IResourceMetadataService;
 import io.agrest.runtime.meta.MetadataService;
 import io.agrest.runtime.meta.ResourceMetadataService;
-import io.agrest.runtime.parser.converter.DefaultJsonValueConverterFactoryProvider;
-import io.agrest.runtime.parser.converter.IJsonValueConverterFactory;
 import io.agrest.runtime.processor.select.SelectContext;
 import org.apache.cayenne.ObjectContext;
 import org.apache.cayenne.configuration.server.DataSourceFactory;
@@ -70,7 +69,6 @@ public class TestWithCayenneMapping {
 	protected IMetadataService metadataService;
 	protected IResourceMetadataService resourceMetadataService;
 	protected IResourceParser resourceParser;
-	protected IJsonValueConverterFactory converterFactory;
 
 	@Before
 	public void initAgDataMap() {
@@ -82,7 +80,6 @@ public class TestWithCayenneMapping {
 		when(mockCayennePersister.sharedContext()).thenReturn(sharedContext);
 		when(mockCayennePersister.newContext()).thenReturn(runtime.newContext());
 
-		this.converterFactory = new DefaultJsonValueConverterFactoryProvider(Collections.emptyMap()).get();
 		this.metadataService = createMetadataService();
 		this.resourceParser = new ResourceParser(metadataService);
 		this.resourceMetadataService = createResourceMetadataService();
@@ -91,10 +88,10 @@ public class TestWithCayenneMapping {
 	protected IMetadataService createMetadataService() {
 
 		List<AgEntityCompiler> compilers = new ArrayList<>();
-		compilers.add(new CayenneEntityCompiler(mockCayennePersister, Collections.emptyMap(), converterFactory));
+		compilers.add(new CayenneEntityCompiler(mockCayennePersister, Collections.emptyMap()));
 		compilers.add(new PojoEntityCompiler(Collections.emptyMap()));
 
-		return new MetadataService(compilers, mockCayennePersister);
+		return new MetadataService(compilers);
 	}
 
 	protected IResourceMetadataService createResourceMetadataService() {
@@ -120,7 +117,11 @@ public class TestWithCayenneMapping {
 	}
 
 	protected <T> ResourceEntity<T> getResourceEntity(Class<T> type) {
-		return new ResourceEntity<>(getAgEntity(type));
+		return new ResourceEntity<>(getAgEntity(type), null);
+	}
+
+	protected <T> ResourceEntity<T> getResourceEntity(Class<T> type, AgRelationship incoming) {
+		return new ResourceEntity<>(getAgEntity(type), null, incoming);
 	}
 
 	protected <T> void appendAttribute(ResourceEntity<?> entity, Property<T> property, Class<T> type) {
@@ -128,40 +129,22 @@ public class TestWithCayenneMapping {
 	}
 
 	protected void appendAttribute(ResourceEntity<?> entity, String name, Class<?> type) {
-		entity.getAttributes().put(name, new DefaultAgAttribute(name, type));
+		entity.getAttributes().put(name, new DefaultAgAttribute(name, type, BeanPropertyReader.reader()));
 	}
 
-	protected <T> void appendPersistenceAttribute(ResourceEntity<?> entity, Property<T> property, Class<T> javaType,
-			int jdbcType) {
-		appendPersistenceAttribute(entity, property.getName(), javaType, jdbcType);
+	protected <T> void appendPersistenceAttribute(ResourceEntity<?> entity, Property<T> property, Class<T> javaType) {
+		appendPersistenceAttribute(entity, property.getName(), javaType);
 	}
 
-	protected void appendPersistenceAttribute(ResourceEntity<?> entity, String name, Class<?> javaType, int jdbcType) {
+	protected void appendPersistenceAttribute(ResourceEntity<?> entity, String name, Class<?> javaType) {
 		entity.getAttributes().put(name,
-				new TestAgPersistentAttribute(name, javaType, jdbcType));
+				new TestAgPersistentAttribute(name, javaType));
 	}
 
-	private class TestAgPersistentAttribute extends DefaultAgAttribute implements AgPersistentAttribute {
-		private int jdbcType;
+	private class TestAgPersistentAttribute extends DefaultAgAttribute {
 
-		public TestAgPersistentAttribute(String name, Class<?> javaType, int jdbcType) {
-			super(name, javaType);
-			this.jdbcType = jdbcType;
-		}
-
-		@Override
-		public int getJdbcType() {
-			return jdbcType;
-		}
-
-		@Override
-		public String getColumnName() {
-			return getName();
-		}
-
-		@Override
-		public boolean isMandatory() {
-			return false;
+		public TestAgPersistentAttribute(String name, Class<?> javaType) {
+			super(name, javaType, BeanPropertyReader.reader());
 		}
 
 		@Override

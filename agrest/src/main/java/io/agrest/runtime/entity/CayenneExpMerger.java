@@ -4,59 +4,31 @@ import io.agrest.ResourceEntity;
 import io.agrest.protocol.CayenneExp;
 import org.apache.cayenne.di.Inject;
 import org.apache.cayenne.exp.Expression;
-import org.apache.cayenne.exp.ExpressionFactory;
-
-import java.util.List;
-import java.util.Map;
 
 /**
  * @since 2.13
  */
 public class CayenneExpMerger implements ICayenneExpMerger {
 
-	private IExpressionPostProcessor postProcessor;
+    private IExpressionPostProcessor postProcessor;
+    private IExpressionParser expressionParser;
 
-	public CayenneExpMerger(@Inject IExpressionPostProcessor postProcessor) {
-		this.postProcessor = postProcessor;
-	}
+    public CayenneExpMerger(
+            @Inject IExpressionParser expressionParser,
+            @Inject IExpressionPostProcessor postProcessor) {
+        this.postProcessor = postProcessor;
+        this.expressionParser = expressionParser;
+    }
 
-	/**
-	 * @since 2.13
-	 */
-	@Override
-	public void merge(ResourceEntity<?> resourceEntity, CayenneExp cayenneExp) {
-		Expression exp = postProcessor.process(resourceEntity.getAgEntity(), exp(cayenneExp));
-		if (exp != null) {
-			resourceEntity.andQualifier(exp);
-		}
-	}
+    @Override
+    public void merge(ResourceEntity<?> resourceEntity, CayenneExp cayenneExp) {
 
+        Expression exp = postProcessor.process(
+                resourceEntity.getAgEntity(),
+                expressionParser.parse(cayenneExp));
 
-	/**
-	 * @since 2.13
-	 */
-	private Expression exp(CayenneExp cayenneExp) {
-		if (cayenneExp == null) {
-			return null;
-		}
-		
-		final String exp = cayenneExp.getExp();
-        if (exp == null || exp.isEmpty()) {
-            return null;
+        if (exp != null) {
+            resourceEntity.andQualifier(exp);
         }
-
-        final List<Object> inPositionParams = cayenneExp.getInPositionParams();
-        if (inPositionParams != null && !inPositionParams.isEmpty()) {
-            return ExpressionFactory.exp(exp, inPositionParams.toArray());
-        }
-
-        Expression expression = ExpressionFactory.exp(exp);
-
-		final Map<String, Object> params = cayenneExp.getParams();
-        if (params != null && !params.isEmpty()) {
-            expression = expression.params(params);
-        }
-
-        return expression;
-	}
+    }
 }

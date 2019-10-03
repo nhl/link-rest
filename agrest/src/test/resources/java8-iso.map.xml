@@ -32,4 +32,17 @@
 	<obj-entity name="ISOTimestampTest" className="io.agrest.it.fixture.cayenne.iso.Java8ISOTimestampTestEntity" dbEntityName="ISO_TIMESTAMP_TEST">
 		<obj-attribute name="timestamp" type="java.time.LocalDateTime" db-attribute-path="Timestamp"/>
 	</obj-entity>
+	<cgen xmlns="http://cayenne.apache.org/schema/10/cgen">
+		<destDir>.</destDir>
+		<mode>entity</mode>
+		<template>templates/v4_1/subclass.vm</template>
+		<superTemplate>templates/v4_1/superclass.vm</superTemplate>
+		<outputPattern>*.java</outputPattern>
+		<makePairs>true</makePairs>
+		<usePkgPath>true</usePkgPath>
+		<overwrite>false</overwrite>
+		<createPropertyNames>false</createPropertyNames>
+		<createPKProperties>false</createPKProperties>
+		<client>false</client>
+	</cgen>
 </data-map>

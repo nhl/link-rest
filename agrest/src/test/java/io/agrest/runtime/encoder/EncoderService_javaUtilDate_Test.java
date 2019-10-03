@@ -2,12 +2,10 @@ package io.agrest.runtime.encoder;
 
 import io.agrest.ResourceEntity;
 import io.agrest.encoder.Encoder;
-import io.agrest.encoder.EncoderFilter;
 import io.agrest.encoder.Encoders;
 import io.agrest.encoder.ISODateEncoder;
 import io.agrest.encoder.ISODateTimeEncoder;
 import io.agrest.encoder.ISOTimeEncoderTest;
-import io.agrest.encoder.PropertyMetadataEncoder;
 import io.agrest.it.fixture.cayenne.iso.SqlDateTestEntity;
 import io.agrest.it.fixture.cayenne.iso.UtilDateTestEntity;
 import io.agrest.runtime.semantics.RelationshipMapper;
@@ -15,14 +13,13 @@ import io.agrest.unit.TestWithCayenneMapping;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.sql.Types;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.mock;
 
 public class EncoderService_javaUtilDate_Test extends TestWithCayenneMapping {
@@ -35,11 +32,14 @@ public class EncoderService_javaUtilDate_Test extends TestWithCayenneMapping {
 
     @Before
     public void before() {
-        IAttributeEncoderFactory attributeEncoderFactory = new AttributeEncoderFactoryProvider(Collections.emptyMap()).get();
+        IAttributeEncoderFactory aef = new AttributeEncoderFactory(new ValueEncodersProvider(Collections.emptyMap()).get());
         IStringConverterFactory stringConverterFactory = mock(IStringConverterFactory.class);
 
-        encoderService = new EncoderService(Collections.<EncoderFilter>emptyList(), attributeEncoderFactory, stringConverterFactory,
-                new RelationshipMapper(), Collections.<String, PropertyMetadataEncoder>emptyMap());
+        encoderService = new EncoderService(
+                aef,
+                stringConverterFactory,
+                new RelationshipMapper(),
+                Collections.emptyMap());
     }
 
     /**
@@ -61,9 +61,9 @@ public class EncoderService_javaUtilDate_Test extends TestWithCayenneMapping {
     private void _testISODateTimeEncoder_javaUtilDate(java.util.Date date, String expectedPattern) {
 
         ResourceEntity<UtilDateTestEntity> resourceEntity = getResourceEntity(UtilDateTestEntity.class);
-        appendPersistenceAttribute(resourceEntity, UtilDateTestEntity.DATE, java.util.Date.class, Types.DATE);
-        appendPersistenceAttribute(resourceEntity, UtilDateTestEntity.TIMESTAMP, java.util.Date.class, Types.TIMESTAMP);
-        appendPersistenceAttribute(resourceEntity, UtilDateTestEntity.TIME, java.util.Date.class, Types.TIME);
+        appendPersistenceAttribute(resourceEntity, UtilDateTestEntity.DATE, java.util.Date.class);
+        appendPersistenceAttribute(resourceEntity, UtilDateTestEntity.TIMESTAMP, java.util.Date.class);
+        appendPersistenceAttribute(resourceEntity, UtilDateTestEntity.TIME, java.util.Date.class);
 
         UtilDateTestEntity utilDateTestEntity = new UtilDateTestEntity();
         utilDateTestEntity.setDate(date);
@@ -91,7 +91,7 @@ public class EncoderService_javaUtilDate_Test extends TestWithCayenneMapping {
     @Test
     public void testISODateEncoder_javaSqlDate() {
         ResourceEntity<SqlDateTestEntity> resourceEntity = getResourceEntity(SqlDateTestEntity.class);
-        appendPersistenceAttribute(resourceEntity, SqlDateTestEntity.DATE, java.sql.Date.class, Types.DATE);
+        appendPersistenceAttribute(resourceEntity, SqlDateTestEntity.DATE, java.sql.Date.class);
 
         java.sql.Date date = new java.sql.Date(EPOCH_MILLIS);
 
@@ -122,7 +122,7 @@ public class EncoderService_javaUtilDate_Test extends TestWithCayenneMapping {
     private void _testISOTimeEncoder_javaSqlTime(java.sql.Time time, String expectedPattern) {
 
         ResourceEntity<SqlDateTestEntity> resourceEntity = getResourceEntity(SqlDateTestEntity.class);
-        appendPersistenceAttribute(resourceEntity, SqlDateTestEntity.TIME, java.sql.Time.class, Types.TIME);
+        appendPersistenceAttribute(resourceEntity, SqlDateTestEntity.TIME, java.sql.Time.class);
 
         SqlDateTestEntity sqlDateTestEntity = new SqlDateTestEntity();
         sqlDateTestEntity.setTime(time);
@@ -150,7 +150,7 @@ public class EncoderService_javaUtilDate_Test extends TestWithCayenneMapping {
     private void _testISODateTimeEncoder_javaSqlTimestamp(java.sql.Timestamp timestamp, String expectedPattern) {
 
         ResourceEntity<SqlDateTestEntity> resourceEntity = getResourceEntity(SqlDateTestEntity.class);
-        appendPersistenceAttribute(resourceEntity, SqlDateTestEntity.TIMESTAMP, java.sql.Timestamp.class, Types.TIMESTAMP);
+        appendPersistenceAttribute(resourceEntity, SqlDateTestEntity.TIMESTAMP, java.sql.Timestamp.class);
 
         SqlDateTestEntity sqlDateTestEntity = new SqlDateTestEntity();
         sqlDateTestEntity.setTimestamp(timestamp);

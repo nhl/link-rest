@@ -99,7 +99,7 @@
 	</db-entity>
 	<db-entity name="e2" schema="utest">
 		<db-attribute name="address" type="VARCHAR" length="255"/>
-		<db-attribute name="id" type="INTEGER" isPrimaryKey="true" isGenerated="true" isMandatory="true"/>
+		<db-attribute name="id_" type="INTEGER" isPrimaryKey="true" isGenerated="true" isMandatory="true"/>
 		<db-attribute name="name" type="VARCHAR" length="100"/>
 	</db-entity>
 	<db-entity name="e20" schema="utest">
@@ -107,7 +107,7 @@
 		<db-attribute name="description" type="VARCHAR" length="100"/>
 		<db-attribute name="e21_id" type="INTEGER"/>
 		<db-attribute name="id" type="INTEGER" isPrimaryKey="true" isGenerated="true" isMandatory="true"/>
-		<db-attribute name="name" type="VARCHAR" length="100"/>
+		<db-attribute name="name_col" type="VARCHAR" length="100"/>
 	</db-entity>
 	<db-entity name="e21" schema="utest">
 		<db-attribute name="age" type="INTEGER"/>
@@ -132,10 +132,17 @@
 		<db-attribute name="id" type="INTEGER" isPrimaryKey="true" isMandatory="true"/>
 		<db-attribute name="name" type="VARCHAR" length="100"/>
 	</db-entity>
+	<db-entity name="e26" schema="utest">
+		<db-attribute name="e23_id" type="INTEGER"/>
+		<db-attribute name="id" type="INTEGER" isPrimaryKey="true" isMandatory="true"/>
+	</db-entity>
+	<db-entity name="e27_nopk" schema="utest">
+		<db-attribute name="name" type="VARCHAR" length="100"/>
+	</db-entity>
 	<db-entity name="e3" schema="utest">
 		<db-attribute name="e2_id" type="INTEGER"/>
 		<db-attribute name="e5_id" type="INTEGER"/>
-		<db-attribute name="id" type="INTEGER" isPrimaryKey="true" isGenerated="true" isMandatory="true"/>
+		<db-attribute name="id_" type="INTEGER" isPrimaryKey="true" isGenerated="true" isMandatory="true"/>
 		<db-attribute name="name" type="VARCHAR" length="200"/>
 		<db-attribute name="phone_number" type="VARCHAR" length="12"/>
 	</db-entity>
@@ -243,7 +250,7 @@
 	<obj-entity name="E20" className="io.agrest.it.fixture.cayenne.E20" dbEntityName="e20">
 		<obj-attribute name="age" type="java.lang.Integer" db-attribute-path="age"/>
 		<obj-attribute name="description" type="java.lang.String" db-attribute-path="description"/>
-		<obj-attribute name="name" type="java.lang.String" db-attribute-path="name"/>
+		<obj-attribute name="name" type="java.lang.String" db-attribute-path="name_col"/>
 	</obj-entity>
 	<obj-entity name="E21" className="io.agrest.it.fixture.cayenne.E21" dbEntityName="e21">
 		<obj-attribute name="age" type="java.lang.Integer" db-attribute-path="age"/>
@@ -262,6 +269,10 @@
 		<obj-attribute name="type" type="java.lang.String" db-attribute-path="TYPE"/>
 	</obj-entity>
 	<obj-entity name="E25" className="io.agrest.it.fixture.cayenne.E25" dbEntityName="e25" superClassName="org.apache.cayenne.HybridDataObject"/>
+	<obj-entity name="E26" className="io.agrest.it.fixture.cayenne.E26" dbEntityName="e26"/>
+	<obj-entity name="E27Nopk" className="io.agrest.it.fixture.cayenne.E27Nopk" dbEntityName="e27_nopk">
+		<obj-attribute name="name" type="java.lang.String" db-attribute-path="name"/>
+	</obj-entity>
 	<obj-entity name="E3" className="io.agrest.it.fixture.cayenne.E3" dbEntityName="e3">
 		<obj-attribute name="name" type="java.lang.String" db-attribute-path="name"/>
 		<obj-attribute name="phoneNumber" type="java.lang.String" db-attribute-path="phone_number"/>
@@ -343,7 +354,7 @@
 		<db-attribute-pair source="e17_id2" target="id2"/>
 	</db-relationship>
 	<db-relationship name="e3s" source="e2" target="e3" toMany="true">
-		<db-attribute-pair source="id" target="e2_id"/>
+		<db-attribute-pair source="id_" target="e2_id"/>
 	</db-relationship>
 	<db-relationship name="e21" source="e20" target="e21">
 		<db-attribute-pair source="e21_id" target="id"/>
@@ -354,11 +365,17 @@
 	<db-relationship name="e25s" source="e22" target="e25" toMany="true">
 		<db-attribute-pair source="id" target="e22_id"/>
 	</db-relationship>
+	<db-relationship name="e26s" source="e23" target="e26" toMany="true">
+		<db-attribute-pair source="id" target="e23_id"/>
+	</db-relationship>
 	<db-relationship name="e22" source="e25" target="e22">
 		<db-attribute-pair source="e22_id" target="id"/>
 	</db-relationship>
+	<db-relationship name="e23" source="e26" target="e23">
+		<db-attribute-pair source="e23_id" target="id"/>
+	</db-relationship>
 	<db-relationship name="e2" source="e3" target="e2">
-		<db-attribute-pair source="e2_id" target="id"/>
+		<db-attribute-pair source="e2_id" target="id_"/>
 	</db-relationship>
 	<db-relationship name="e5" source="e3" target="e5">
 		<db-attribute-pair source="e5_id" target="id"/>
@@ -399,6 +416,8 @@
 	<obj-relationship name="e3s" source="E2" target="E3" deleteRule="Deny" db-relationship-path="e3s"/>
 	<obj-relationship name="e21" source="E20" target="E21" deleteRule="Nullify" db-relationship-path="e21"/>
 	<obj-relationship name="e20s" source="E21" target="E20" deleteRule="Nullify" db-relationship-path="e20"/>
+	<obj-relationship name="e26s" source="E23" target="E26" deleteRule="Deny" db-relationship-path="e26s"/>
+	<obj-relationship name="e23" source="E26" target="E23" deleteRule="Nullify" db-relationship-path="e23"/>
 	<obj-relationship name="e2" source="E3" target="E2" deleteRule="Nullify" db-relationship-path="e2"/>
 	<obj-relationship name="e5" source="E3" target="E5" deleteRule="Nullify" db-relationship-path="e5"/>
 	<obj-relationship name="e15s" source="E5" target="E15" db-relationship-path="e15e5.e15"/>
@@ -407,4 +426,17 @@
 	<obj-relationship name="e7s" source="E8" target="E7" deleteRule="Deny" db-relationship-path="e7s"/>
 	<obj-relationship name="e9" source="E8" target="E9" deleteRule="Nullify" db-relationship-path="e9"/>
 	<obj-relationship name="e8" source="E9" target="E8" deleteRule="Nullify" db-relationship-path="e8"/>
+	<cgen xmlns="http://cayenne.apache.org/schema/10/cgen">
+		<destDir>.</destDir>
+		<mode>entity</mode>
+		<template>templates/v4_1/subclass.vm</template>
+		<superTemplate>templates/v4_1/superclass.vm</superTemplate>
+		<outputPattern>*.java</outputPattern>
+		<makePairs>true</makePairs>
+		<usePkgPath>true</usePkgPath>
+		<overwrite>false</overwrite>
+		<createPropertyNames>false</createPropertyNames>
+		<createPKProperties>false</createPKProperties>
+		<client>false</client>
+	</cgen>
 </data-map>
