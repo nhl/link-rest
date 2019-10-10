@@ -1,19 +1,23 @@
 package io.agrest.meta.cayenne;
 
-import io.agrest.ResourceEntity;
 import io.agrest.meta.AgAttribute;
 import io.agrest.meta.AgDataMap;
 import io.agrest.meta.AgEntity;
 import io.agrest.meta.AgEntityBuilder;
 import io.agrest.meta.AgEntityOverlay;
 import io.agrest.meta.AgRelationship;
+import io.agrest.meta.AgRelationshipOverlay;
+import io.agrest.meta.DefaultAgAttribute;
 import io.agrest.meta.DefaultAgEntity;
-import io.agrest.property.ChildEntityListResultReader;
-import io.agrest.property.ChildEntityResultReader;
+import io.agrest.meta.DefaultAgRelationship;
 import io.agrest.property.DefaultIdReader;
 import io.agrest.property.IdReader;
-import io.agrest.property.PropertyReader;
+import io.agrest.resolver.NestedDataResolver;
+import io.agrest.resolver.RootDataResolver;
+import io.agrest.resolver.ThrowingRootDataResolver;
 import org.apache.cayenne.dba.TypesMapping;
+import org.apache.cayenne.exp.parser.ASTDbPath;
+import org.apache.cayenne.exp.parser.ASTObjPath;
 import org.apache.cayenne.map.DbAttribute;
 import org.apache.cayenne.map.EntityResolver;
 import org.apache.cayenne.map.ObjAttribute;
@@ -24,7 +28,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Function;
 
 import static io.agrest.meta.Types.typeForName;
 
@@ -35,7 +38,7 @@ public class CayenneAgEntityBuilder<T> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CayenneAgEntityBuilder.class);
 
-    private final EntityResolver resolver;
+    private final EntityResolver cayenneResolver;
     private final Class<T> type;
     private final AgDataMap agDataMap;
     private final ObjEntity cayenneEntity;
@@ -45,14 +48,17 @@ public class CayenneAgEntityBuilder<T> {
 
     private AgEntityOverlay<T> overlay;
     private boolean pojoIdReader;
+    private RootDataResolver<T> rootDataResolver;
+    private NestedDataResolver<T> nestedDataResolver;
+    private NestedDataResolver pojoNestedResolver;
 
-    public CayenneAgEntityBuilder(Class<T> type, AgDataMap agDataMap, EntityResolver resolver) {
+    public CayenneAgEntityBuilder(Class<T> type, AgDataMap agDataMap, EntityResolver cayenneResolver) {
 
-        this.resolver = resolver;
+        this.cayenneResolver = cayenneResolver;
 
         this.type = type;
         this.agDataMap = agDataMap;
-        this.cayenneEntity = resolver.getObjEntity(type);
+        this.cayenneEntity = cayenneResolver.getObjEntity(type);
 
         this.ids = new HashMap<>();
         this.attributes = new HashMap<>();
@@ -61,6 +67,21 @@ public class CayenneAgEntityBuilder<T> {
 
     public CayenneAgEntityBuilder<T> overlay(AgEntityOverlay<T> overlay) {
         this.overlay = overlay;
+        return this;
+    }
+
+    public CayenneAgEntityBuilder<T> rootDataResolver(RootDataResolver<T> resolver) {
+        this.rootDataResolver = resolver;
+        return this;
+    }
+
+    public CayenneAgEntityBuilder<T> nestedDataResolver(NestedDataResolver<T> resolver) {
+        this.nestedDataResolver = resolver;
+        return this;
+    }
+
+    public CayenneAgEntityBuilder<T> pojoNestedDataResolver(NestedDataResolver<T> resolver) {
+        this.pojoNestedResolver = resolver;
         return this;
     }
 
@@ -78,7 +99,8 @@ public class CayenneAgEntityBuilder<T> {
                 ids,
                 attributes,
                 relationships,
-                idReader);
+                idReader,
+                rootDataResolver != null ? rootDataResolver : ThrowingRootDataResolver.getInstance());
     }
 
     private AgAttribute addId(AgAttribute id) {
@@ -97,26 +119,19 @@ public class CayenneAgEntityBuilder<T> {
 
         for (ObjAttribute a : cayenneEntity.getAttributes()) {
             Class<?> type = typeForName(a.getType());
-            addAttribute(new CayenneAgObjAttribute(a, type, DataObjectPropertyReader.reader()));
+            addAttribute(new DefaultAgAttribute(a.getName(), type, new ASTObjPath(a.getName()), DataObjectPropertyReader.reader()));
         }
 
         for (ObjRelationship r : cayenneEntity.getRelationships()) {
 
-            Class<?> targetEntityType = resolver.getClassDescriptor(r.getTargetEntityName()).getObjectClass();
+            Class<?> targetEntityType = cayenneResolver.getClassDescriptor(r.getTargetEntityName()).getObjectClass();
 
-            // 'agDataMap.getEntity' will compile the entity on the fly if needed
-            AgEntity<?> targetEntity = agDataMap.getEntity(targetEntityType);
-
-            // TODO: a decision whether to read results from the object or from the child entity (via
-            //  ChildEntityResultReader and ChildEntityListResultReader) should not be dependent on the object nature,
-            //  but rather on the data retrieval strategy for a given relationship
-
-            Function<ResourceEntity<?>, PropertyReader> readerFactory = r.isToMany()
-                    // "idReader" must come from parent entity.. it is not yet know here
-                    ? e -> new ChildEntityListResultReader(e, e.getAgEntity().getIdReader())
-                    : e -> new ChildEntityResultReader(e, e.getAgEntity().getIdReader());
-
-            addRelationship(new CayenneAgRelationship(r, targetEntity, readerFactory));
+            addRelationship(new DefaultAgRelationship(
+                    r.getName(),
+                    // 'agDataMap.getEntity' will compile the entity on the fly if needed
+                    agDataMap.getEntity(targetEntityType),
+                    r.isToMany(),
+                    nestedDataResolver));
         }
 
         for (DbAttribute pk : cayenneEntity.getDbEntity().getPrimaryKeys()) {
@@ -126,15 +141,16 @@ public class CayenneAgEntityBuilder<T> {
             if (attribute == null) {
 
                 // TODO: we are using a DB name for the attribute... Perhaps it should not be exposed in Ag model?
-                id = new CayenneAgDbAttribute(
+                id = new DefaultAgAttribute(
                         pk.getName(),
-                        pk,
                         typeForName(TypesMapping.getJavaBySqlType(pk.getType())),
+                        new ASTDbPath(pk.getName()),
                         ObjectIdValueReader.reader());
             } else {
-                id = new CayenneAgObjAttribute(
-                        attribute,
+                id = new DefaultAgAttribute(
+                        attribute.getName(),
                         typeForName(attribute.getType()),
+                        new ASTObjPath(attribute.getName()),
                         DataObjectPropertyReader.reader());
             }
 
@@ -144,12 +160,12 @@ public class CayenneAgEntityBuilder<T> {
 
     protected void buildAnnotatedProperties() {
 
-        // load a separate entity built purely from annotations, then merge it
-        // with our entity... Note that we are not cloning attributes or
-        // relationship during merge... they have no references to parent and
-        // can be used as is.
+        // Load a separate entity built purely from annotations, then merge it with our entity. We are not cloning
+        // attributes or relationship during merge... they have no references to parent and can be used as is.
 
-        AgEntity<T> annotatedEntity = new AgEntityBuilder<>(type, agDataMap).build();
+        AgEntity<T> annotatedEntity = new AgEntityBuilder<>(type, agDataMap)
+                .nestedDataResolver(pojoNestedResolver)
+                .build();
 
         if (annotatedEntity.getIds().size() > 0) {
 
@@ -195,9 +211,17 @@ public class CayenneAgEntityBuilder<T> {
         if (overlay != null) {
             // TODO: what about overlaying ids?
             overlay.getAttributes().forEach(this::addAttribute);
+            overlay.getRelationshipOverlays().forEach(this::loadRelationshipOverlay);
+            if(overlay.getRootDataResolver() != null) {
+                this.rootDataResolver = overlay.getRootDataResolver();
+            }
+        }
+    }
 
-            // I guess there's no point or benefit in creating CayenneAgRelationship for any overlays?
-            overlay.getRelationships().forEach(ro -> addRelationship(ro.resolve(agDataMap)));
+    protected void loadRelationshipOverlay(AgRelationshipOverlay overlay) {
+        AgRelationship relationship = overlay.resolve(relationships.get(overlay.getName()), agDataMap);
+        if (relationship != null) {
+            addRelationship(relationship);
         }
     }
 }

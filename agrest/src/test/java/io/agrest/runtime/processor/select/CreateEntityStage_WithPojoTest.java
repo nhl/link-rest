@@ -3,7 +3,6 @@ package io.agrest.runtime.processor.select;
 import io.agrest.ResourceEntity;
 import io.agrest.it.fixture.pojo.model.P1;
 import io.agrest.it.fixture.pojo.model.P2;
-import io.agrest.meta.cayenne.CayenneEntityCompiler;
 import io.agrest.meta.compiler.AgEntityCompiler;
 import io.agrest.meta.compiler.PojoEntityCompiler;
 import io.agrest.protocol.Include;
@@ -22,7 +21,6 @@ import io.agrest.runtime.entity.MapByMerger;
 import io.agrest.runtime.entity.SizeMerger;
 import io.agrest.runtime.entity.SortMerger;
 import io.agrest.runtime.meta.IMetadataService;
-import io.agrest.runtime.meta.MetadataService;
 import io.agrest.runtime.path.IPathDescriptorManager;
 import io.agrest.runtime.path.PathDescriptorManager;
 import io.agrest.runtime.protocol.ICayenneExpParser;
@@ -36,7 +34,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import javax.ws.rs.core.MultivaluedMap;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -62,7 +59,7 @@ public class CreateEntityStage_WithPojoTest extends TestWithCayenneMapping {
         IExcludeMerger excludeConstructor = new ExcludeMerger();
 
         this.createEntityStage = new CreateResourceEntityStage(
-                createMetadataService(),
+                metadataService,
                 expConstructor,
                 sortConstructor,
                 mapByConstructor,
@@ -79,13 +76,8 @@ public class CreateEntityStage_WithPojoTest extends TestWithCayenneMapping {
     }
 
     @Override
-    protected IMetadataService createMetadataService() {
-
-        List<AgEntityCompiler> compilers = new ArrayList<>();
-        compilers.add(new PojoEntityCompiler(Collections.emptyMap()));
-        compilers.add(new CayenneEntityCompiler(mockCayennePersister, Collections.emptyMap()));
-
-        return new MetadataService(compilers);
+    protected List<AgEntityCompiler> createEntityCompilers() {
+        return Collections.singletonList(new PojoEntityCompiler(Collections.emptyMap()));
     }
 
     @Test

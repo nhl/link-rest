@@ -6,5 +6,17 @@ package io.agrest.protocol;
  * @since 2.13
  */
 public enum Dir {
-    ASC, DESC;
+    ASC,
+
+    /**
+     * @since 3.4
+     */
+    ASC_CI,
+
+    DESC,
+
+    /**
+     * @since 3.4
+     */
+    DESC_CI;
 }

@@ -7,6 +7,7 @@ import io.agrest.DataResponse;
 import io.agrest.EntityParent;
 import io.agrest.EntityProperty;
 import io.agrest.ResourceEntity;
+import io.agrest.RootResourceEntity;
 import io.agrest.SimpleObjectId;
 import io.agrest.SizeConstraints;
 import io.agrest.constraints.Constraint;
@@ -30,7 +31,7 @@ public class SelectContext<T> extends BaseProcessingContext<T> {
 
     private AgObjectId id;
     private EntityParent<?> parent;
-    private ResourceEntity<T> entity;
+    private RootResourceEntity<T> entity;
     private UriInfo uriInfo;
     private Map<String, EntityProperty> extraProperties;
     private SizeConstraints sizeConstraints;
@@ -53,7 +54,7 @@ public class SelectContext<T> extends BaseProcessingContext<T> {
      * @since 1.24
      */
     public DataResponse<T> createDataResponse() {
-        List<? extends T> objects = this.entity != null ? this.entity.getResult() : Collections.<T>emptyList();
+        List<? extends T> objects = this.entity != null ? this.entity.getResult() : Collections.emptyList();
         DataResponse<T> response = DataResponse.forType(getType());
         response.setObjects(objects);
         response.setEncoder(encoder);
@@ -192,17 +193,11 @@ public class SelectContext<T> extends BaseProcessingContext<T> {
         this.encoder = encoder;
     }
 
-    /**
-     * @since 1.20
-     */
-    public ResourceEntity<T> getEntity() {
+    public RootResourceEntity<T> getEntity() {
         return entity;
     }
 
-    /**
-     * @since 1.20
-     */
-    public void setEntity(ResourceEntity<T> entity) {
+    public void setEntity(RootResourceEntity<T> entity) {
         this.entity = entity;
     }
 

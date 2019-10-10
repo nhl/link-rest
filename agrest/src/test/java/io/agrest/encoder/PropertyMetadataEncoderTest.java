@@ -7,6 +7,8 @@ import io.agrest.meta.AgRelationship;
 import io.agrest.meta.DefaultAgAttribute;
 import io.agrest.meta.DefaultAgRelationship;
 import io.agrest.property.BeanPropertyReader;
+import io.agrest.resolver.ParentPropertyDataResolvers;
+import org.apache.cayenne.exp.parser.ASTObjPath;
 import org.junit.Test;
 
 import static io.agrest.encoder.Encoders.toJson;
@@ -20,13 +22,13 @@ public class PropertyMetadataEncoderTest {
 
     @Test
     public void testEncode_StringAttribute() {
-        AgAttribute attribute = new DefaultAgAttribute("prop", String.class, BeanPropertyReader.reader());
+        AgAttribute attribute = new DefaultAgAttribute("prop", String.class, new ASTObjPath("prop"), BeanPropertyReader.reader());
         assertEquals("{\"name\":\"prop\",\"type\":\"string\"}", toJson(encoder, attribute));
     }
 
     @Test
     public void testEncode_ObjectAttribute() {
-        AgAttribute attribute = new DefaultAgAttribute("prop", Object.class, BeanPropertyReader.reader());
+        AgAttribute attribute = new DefaultAgAttribute("prop", Object.class, new ASTObjPath("prop"), BeanPropertyReader.reader());
         assertEquals("{\"name\":\"prop\",\"type\":\"unknown\"}", toJson(encoder, attribute));
     }
 
@@ -34,7 +36,7 @@ public class PropertyMetadataEncoderTest {
     public void testEncode_ToOneRelationship() {
         AgEntity<E4> target = mock(AgEntity.class);
         when(target.getName()).thenReturn("E4");
-        AgRelationship r = new DefaultAgRelationship("rel", target, false, e -> BeanPropertyReader.reader());
+        AgRelationship r = new DefaultAgRelationship("rel", target, false, ParentPropertyDataResolvers.forReader(BeanPropertyReader.reader()));
         assertEquals("{\"name\":\"rel\",\"type\":\"E4\",\"relationship\":true}", toJson(encoder, r));
     }
 
@@ -42,7 +44,7 @@ public class PropertyMetadataEncoderTest {
     public void testEncode_ToManyRelationship() {
         AgEntity<E4> target = mock(AgEntity.class);
         when(target.getName()).thenReturn("E4");
-        AgRelationship r = new DefaultAgRelationship("rel", target, true, e -> BeanPropertyReader.reader());
+        AgRelationship r = new DefaultAgRelationship("rel", target, true, ParentPropertyDataResolvers.forReader(BeanPropertyReader.reader()));
         assertEquals("{\"name\":\"rel\",\"type\":\"E4\",\"relationship\":true,\"collection\":true}", toJson(encoder, r));
     }
 

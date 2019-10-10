@@ -1,10 +1,13 @@
 Release 3.4
 
+* #413 Pluggable resolver for hierarchical fetches
 * #420 Per-request EncoderFilters
 * #421 Custom per-request Encoder is ignored on update
 * #422 GET: Per-request AgEntityOverlay to customize properties based on request state
 * #423 Wrong Encoder for target entities in overlayed relationships
 * #424 Unwinding Cayenne dependencies - get rid of AgPersistent* models
+* #428 Add support for Case Insensitive Sorting
+* #430 agrest-client: Use protocol "dir" enum instead of "SortDirection" enum
 
 Release 3.3
 

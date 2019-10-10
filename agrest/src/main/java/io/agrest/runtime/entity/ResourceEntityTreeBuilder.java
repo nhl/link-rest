@@ -1,6 +1,7 @@
 package io.agrest.runtime.entity;
 
 import io.agrest.AgException;
+import io.agrest.NestedResourceEntity;
 import io.agrest.EntityProperty;
 import io.agrest.PathConstants;
 import io.agrest.ResourceEntity;
@@ -88,14 +89,16 @@ public class ResourceEntityTreeBuilder {
             }
         }
 
-        AgRelationshipOverlay overlayRelationship = agEntityOverlay != null ? agEntityOverlay.getRelationship(property) : null;
-        if (overlayRelationship != null) {
-            AgRelationship relationship = overlayRelationship.resolve(agDataMap);
-            String childPath = dot > 0 ? path.substring(dot + 1) : null;
-            return inflateChild(entity, relationship, childPath);
+        AgRelationship relationship = agEntity.getRelationship(property);
+        AgRelationshipOverlay relationshipOverlay = agEntityOverlay != null ? agEntityOverlay.getRelationshipOverlay(property) : null;
+        if (relationshipOverlay != null) {
+            AgRelationship overlaid = relationshipOverlay.resolve(relationship, agDataMap);
+            if(overlaid != null) {
+                String childPath = dot > 0 ? path.substring(dot + 1) : null;
+                return inflateChild(entity, overlaid, childPath);
+            }
         }
 
-        AgRelationship relationship = agEntity.getRelationship(property);
         if (relationship != null) {
             String childPath = dot > 0 ? path.substring(dot + 1) : null;
             return inflateChild(entity, relationship, childPath);
@@ -113,15 +116,15 @@ public class ResourceEntityTreeBuilder {
     protected ResourceEntity<?> inflateChild(ResourceEntity<?> parentEntity, AgRelationship relationship, String childPath) {
         ResourceEntity<?> childEntity = parentEntity
                 .getChildren()
-                .computeIfAbsent(relationship.getName(), p -> createChildEntity(relationship));
+                .computeIfAbsent(relationship.getName(), p -> createChildEntity(parentEntity, relationship));
 
         return childPath != null
                 ? doInflatePath(childEntity, childPath)
                 : childEntity;
     }
 
-    protected ResourceEntity<?> createChildEntity(AgRelationship incoming) {
+    protected NestedResourceEntity<?> createChildEntity(ResourceEntity<?> parent, AgRelationship incoming) {
         AgEntity<?> target = incoming.getTargetEntity();
-        return new ResourceEntity(target, entityOverlays.get(target.getType()), incoming);
+        return new NestedResourceEntity(target, entityOverlays.get(target.getType()), parent, incoming);
     }
 }

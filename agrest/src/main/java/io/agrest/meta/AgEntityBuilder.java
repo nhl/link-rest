@@ -1,6 +1,5 @@
 package io.agrest.meta;
 
-import io.agrest.ResourceEntity;
 import io.agrest.annotation.AgAttribute;
 import io.agrest.annotation.AgId;
 import io.agrest.annotation.AgRelationship;
@@ -8,7 +7,10 @@ import io.agrest.meta.compiler.BeanAnalyzer;
 import io.agrest.meta.compiler.PropertyGetter;
 import io.agrest.property.BeanPropertyReader;
 import io.agrest.property.DefaultIdReader;
-import io.agrest.property.PropertyReader;
+import io.agrest.resolver.NestedDataResolver;
+import io.agrest.resolver.RootDataResolver;
+import io.agrest.resolver.ThrowingRootDataResolver;
+import org.apache.cayenne.exp.parser.ASTObjPath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,7 +22,6 @@ import java.lang.reflect.WildcardType;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Function;
 
 /**
  * A helper class to compile custom {@link AgEntity} objects based on annotations.
@@ -35,6 +36,8 @@ public class AgEntityBuilder<T> {
     private String name;
     private AgDataMap agDataMap;
     private AgEntityOverlay<T> overlay;
+    private RootDataResolver<T> rootDataResolver;
+    private NestedDataResolver<T> nestedDataResolver;
 
     private Map<String, io.agrest.meta.AgAttribute> ids;
     private Map<String, io.agrest.meta.AgAttribute> attributes;
@@ -55,6 +58,22 @@ public class AgEntityBuilder<T> {
         return this;
     }
 
+    /**
+     * @since 3.4
+     */
+    public AgEntityBuilder<T> rootDataResolver(RootDataResolver<T> resolver) {
+        this.rootDataResolver = resolver;
+        return this;
+    }
+
+    /**
+     * @since 3.4
+     */
+    public AgEntityBuilder<T> nestedDataResolver(NestedDataResolver<T> resolver) {
+        this.nestedDataResolver = resolver;
+        return this;
+    }
+
     public DefaultAgEntity<T> build() {
 
         collectProperties();
@@ -66,7 +85,8 @@ public class AgEntityBuilder<T> {
                 ids,
                 attributes,
                 relationships,
-                new DefaultIdReader(ids.keySet()));
+                new DefaultIdReader(ids.keySet()),
+                rootDataResolver != null ? rootDataResolver : ThrowingRootDataResolver.getInstance());
     }
 
     private void addId(io.agrest.meta.AgAttribute id) {
@@ -101,7 +121,7 @@ public class AgEntityBuilder<T> {
         if (m.getAnnotation(AgAttribute.class) != null) {
 
             if (checkValidAttributeType(type, m.getGenericReturnType())) {
-                addAttribute(new DefaultAgAttribute(name, type, BeanPropertyReader.reader()));
+                addAttribute(new DefaultAgAttribute(name, type, new ASTObjPath(name), BeanPropertyReader.reader()));
             } else {
                 // still return true after validation failure... this is an attribute, just not a proper one
                 LOGGER.warn("Invalid attribute type for " + this.name + "." + name + ". Skipping.");
@@ -113,7 +133,7 @@ public class AgEntityBuilder<T> {
         if (m.getAnnotation(AgId.class) != null) {
 
             if (checkValidIdType(type)) {
-                addId(new DefaultAgAttribute(name, type, BeanPropertyReader.reader()));
+                addId(new DefaultAgAttribute(name, type, new ASTObjPath(name), BeanPropertyReader.reader()));
             } else {
                 // still return true after validation failure... this is an
                 // attribute, just not a proper one
@@ -192,14 +212,12 @@ public class AgEntityBuilder<T> {
             String name = getter.getName();
             AgEntity<?> targetEntity = agDataMap.getEntity(targetType);
 
-            // unlike Cayenne entity, for POJOs read children from the object, not from the entity..
-
-            // TODO: a decision whether to read results from the object or from the child entity (via
-            //  ChildEntityResultReader and ChildEntityListResultReader) should not be dependent on the object nature,
-            //  but rather on the data retrieval strategy for a given relationship
-
-            Function<ResourceEntity<?>, PropertyReader> readerFactory = e -> BeanPropertyReader.reader();
-            addRelationship(new DefaultAgRelationship(name, targetEntity, toMany, readerFactory));
+            addRelationship(new DefaultAgRelationship(
+                    name,
+                    targetEntity,
+                    toMany,
+                    nestedDataResolver)
+            );
         }
 
         return false;
@@ -208,7 +226,18 @@ public class AgEntityBuilder<T> {
     protected void loadOverlays() {
         if (overlay != null) {
             overlay.getAttributes().forEach(this::addAttribute);
-            overlay.getRelationships().forEach(or -> addRelationship(or.resolve(agDataMap)));
+            overlay.getRelationshipOverlays().forEach(this::loadRelationshipOverlay);
+
+            if(overlay.getRootDataResolver() != null) {
+                this.rootDataResolver = overlay.getRootDataResolver();
+            }
+        }
+    }
+
+    protected void loadRelationshipOverlay(AgRelationshipOverlay overlay) {
+        io.agrest.meta.AgRelationship relationship = overlay.resolve(relationships.get(overlay.getName()), agDataMap);
+        if (relationship != null) {
+            addRelationship(relationship);
         }
     }
 }

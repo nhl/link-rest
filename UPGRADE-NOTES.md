@@ -1,5 +1,11 @@
 ## Upgrading to 3.4
 
+### Support for Case Insensitive Sorting [#428](https://github.com/agrestio/agrest/issues/428)
+
+Support for added for case-insensitive sorting to the Agrest protocol and the backend framework. While this change 
+does not require any upgrade actions, and is fully backwards-compatible, since this is a rare protocol addition,
+it is worth mentioning it here.
+
 ### EncoderFilter API Changes [#420](https://github.com/agrestio/agrest/issues/420)
 
 * `EncoderFilter` was renamed to `EntityEncoderFilter`, as the new name points to the exact place where filtering occurs
@@ -18,6 +24,14 @@ EntityEncoderFilter filter = EntityEncoderFilter.forEntity(E4.class)
     })
     .build();
 ```
+
+### Pluggable Resolvers make `MultiSelectBuilder` obsolete [#413](https://github.com/agrestio/agrest/issues/413)
+
+This feature allows to install custom resolvers for root and nested entities in an Ag request, either globally or per-request.
+This new capability allows to fetch data from multiple sources, aggregating it in a single response on the fly (all without
+altering model objects for each source). This is very powerful, and it makes our earlier experiment with `AgMultiSource`
+and `MultiSelectBuilder` obsolete. These two classes are deprecated. If you were using them, consider switching to
+custom resolvers and `AgEntityOverlay`.
 
 ## Upgrading to 3.2
 
