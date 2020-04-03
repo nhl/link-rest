@@ -32,6 +32,10 @@ import io.agrest.it.fixture.cayenne.E6;
 import io.agrest.it.fixture.cayenne.E7;
 import io.agrest.it.fixture.cayenne.E8;
 import io.agrest.it.fixture.cayenne.E9;
+import io.agrest.it.fixture.cayenne.aggregate1.A11;
+import io.agrest.it.fixture.cayenne.aggregate1.A12;
+import io.agrest.it.fixture.cayenne.aggregate1.A13;
+import io.agrest.it.fixture.cayenne.aggregate1.A14;
 import io.agrest.runtime.AgBuilder;
 import io.agrest.runtime.AgRuntime;
 import io.agrest.runtime.IAgService;
@@ -148,6 +152,22 @@ public abstract class JerseyAndDerbyCase {
 
     protected WebTarget target(String path) {
         return ClientBuilder.newClient().target("http://127.0.0.1:8080/").path(path);
+    }
+
+    protected Table a11() {
+        return dataManager.getTable(A11.class);
+    }
+
+    protected Table a12() {
+        return dataManager.getTable(A12.class);
+    }
+
+    protected Table a13() {
+        return dataManager.getTable(A13.class);
+    }
+
+    protected Table a14() {
+        return dataManager.getTable(A14.class);
     }
 
     protected Table e1() {

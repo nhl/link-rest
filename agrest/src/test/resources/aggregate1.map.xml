@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-map xmlns="http://cayenne.apache.org/schema/9/modelMap"
+	 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	 xsi:schemaLocation="http://cayenne.apache.org/schema/9/modelMap https://cayenne.apache.org/schema/9/modelMap.xsd"
+	 project-version="9">
+	<property name="defaultPackage" value="io.agrest.it.fixture.cayenne.aggregate1"/>
+	<db-entity name="a11">
+		<db-attribute name="a2_id" type="INTEGER"/>
+		<db-attribute name="id" type="INTEGER" isPrimaryKey="true" isMandatory="true"/>
+	</db-entity>
+	<db-entity name="a12">
+		<db-attribute name="id" type="INTEGER" isPrimaryKey="true" isMandatory="true"/>
+	</db-entity>
+	<db-entity name="a13">
+		<db-attribute name="a2_id" type="INTEGER"/>
+		<db-attribute name="f" type="VARCHAR" length="100"/>
+		<db-attribute name="id" type="INTEGER" isPrimaryKey="true" isMandatory="true"/>
+	</db-entity>
+	<db-entity name="a14">
+		<db-attribute name="a3_id" type="INTEGER"/>
+		<db-attribute name="f" type="VARCHAR" length="100"/>
+		<db-attribute name="id" type="INTEGER" isPrimaryKey="true" isMandatory="true"/>
+	</db-entity>
+	<obj-entity name="A11" className="io.agrest.it.fixture.cayenne.aggregate1.A11" dbEntityName="a11">
+	</obj-entity>
+	<obj-entity name="A12" className="io.agrest.it.fixture.cayenne.aggregate1.A12" dbEntityName="a12">
+	</obj-entity>
+	<obj-entity name="A13" className="io.agrest.it.fixture.cayenne.aggregate1.A13" dbEntityName="a13">
+		<obj-attribute name="f" type="java.lang.String" db-attribute-path="f"/>
+	</obj-entity>
+	<obj-entity name="A14" className="io.agrest.it.fixture.cayenne.aggregate1.A14" dbEntityName="a14">
+		<obj-attribute name="f" type="java.lang.String" db-attribute-path="f"/>
+	</obj-entity>
+	<db-relationship name="a2" source="a11" target="a12" toMany="false">
+		<db-attribute-pair source="a2_id" target="id"/>
+	</db-relationship>
+	<db-relationship name="a1s" source="a12" target="a11" toMany="true">
+		<db-attribute-pair source="id" target="a2_id"/>
+	</db-relationship>
+	<db-relationship name="a3s" source="a12" target="a13" toMany="true">
+		<db-attribute-pair source="id" target="a2_id"/>
+	</db-relationship>
+	<db-relationship name="a2" source="a13" target="a12" toMany="false">
+		<db-attribute-pair source="a2_id" target="id"/>
+	</db-relationship>
+	<db-relationship name="a4s" source="a13" target="a14" toMany="true">
+		<db-attribute-pair source="id" target="a3_id"/>
+	</db-relationship>
+	<db-relationship name="a3" source="a14" target="a13" toMany="false">
+		<db-attribute-pair source="a3_id" target="id"/>
+	</db-relationship>
+	<obj-relationship name="a2" source="A11" target="A12" deleteRule="Nullify" db-relationship-path="a2"/>
+	<obj-relationship name="a1s" source="A12" target="A11" deleteRule="Deny" db-relationship-path="a1s"/>
+	<obj-relationship name="a3s" source="A12" target="A13" deleteRule="Deny" db-relationship-path="a3s"/>
+	<obj-relationship name="a2" source="A13" target="A12" deleteRule="Deny" db-relationship-path="a2"/>
+	<obj-relationship name="a4s" source="A13" target="A14" deleteRule="Deny" db-relationship-path="a4s"/>
+	<obj-relationship name="a3" source="A14" target="A13" deleteRule="Nullify" db-relationship-path="a3"/>
+</data-map>
