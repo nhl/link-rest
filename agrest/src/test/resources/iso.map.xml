@@ -28,7 +28,7 @@
 		<obj-attribute name="timestamp" type="java.util.Date" db-attribute-path="Timestamp"/>
 	</obj-entity>
 	<cgen xmlns="http://cayenne.apache.org/schema/10/cgen">
-		<destDir>.</destDir>
+		<destDir>../java</destDir>
 		<mode>entity</mode>
 		<template>templates/v4_1/subclass.vm</template>
 		<superTemplate>templates/v4_1/superclass.vm</superTemplate>

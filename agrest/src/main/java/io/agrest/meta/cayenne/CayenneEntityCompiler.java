@@ -7,12 +7,12 @@ import io.agrest.meta.LazyAgEntity;
 import io.agrest.meta.compiler.AgEntityCompiler;
 import io.agrest.property.BeanPropertyReader;
 import io.agrest.resolver.NestedDataResolver;
-import io.agrest.resolver.ParentPropertyDataResolvers;
+import io.agrest.resolver.ReaderFactoryBasedResolver;
 import io.agrest.resolver.RootDataResolver;
 import io.agrest.runtime.cayenne.ICayennePersister;
 import io.agrest.runtime.cayenne.processor.select.CayenneQueryAssembler;
 import io.agrest.runtime.cayenne.processor.select.ViaQueryResolver;
-import io.agrest.runtime.cayenne.processor.select.ViaQueryWithParentQualifierResolver;
+import io.agrest.runtime.cayenne.processor.select.ViaQueryWithParentExpResolver;
 import org.apache.cayenne.di.Inject;
 import org.apache.cayenne.map.EntityResolver;
 import org.apache.cayenne.map.ObjEntity;
@@ -67,11 +67,11 @@ public class CayenneEntityCompiler implements AgEntityCompiler {
             CayenneQueryAssembler queryAssembler,
             ICayennePersister cayennePersister) {
 
-        return new ViaQueryWithParentQualifierResolver(queryAssembler, cayennePersister);
+        return new ViaQueryWithParentExpResolver(queryAssembler, cayennePersister);
     }
 
     protected NestedDataResolver<?> createDefaultPojoNestedResolver() {
-        return ParentPropertyDataResolvers.forReaderFactory(e -> BeanPropertyReader.reader(e.getIncoming().getName()));
+        return new ReaderFactoryBasedResolver<>(e -> BeanPropertyReader.reader(e.getIncoming().getName()));
     }
 
     private <T> AgEntity<T> doCompile(Class<T> type, AgDataMap dataMap) {

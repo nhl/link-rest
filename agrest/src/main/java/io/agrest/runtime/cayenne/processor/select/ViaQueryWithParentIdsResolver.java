@@ -15,7 +15,7 @@ import java.util.Iterator;
  *
  * @since 3.4
  */
-public class ViaQueryWithParentIdsResolver extends ViaQueryWithParentQualifierResolver {
+public class ViaQueryWithParentIdsResolver extends ViaQueryWithParentExpResolver {
 
     public ViaQueryWithParentIdsResolver(CayenneQueryAssembler queryAssembler, ICayennePersister persister) {
         super(queryAssembler, persister);
@@ -23,7 +23,7 @@ public class ViaQueryWithParentIdsResolver extends ViaQueryWithParentQualifierRe
 
     @Override
     public void onParentQueryAssembled(NestedResourceEntity<DataObject> entity, SelectContext<?> context) {
-        // do nothing... we need to have access to parent objects before we can build our query
+        // no query here... we need to have access to parent objects before we can build our query
     }
 
     @Override

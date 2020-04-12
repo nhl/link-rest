@@ -7,7 +7,7 @@ import io.agrest.it.fixture.cayenne.E2;
 import io.agrest.it.fixture.cayenne.E3;
 import io.agrest.meta.AgEntity;
 import io.agrest.meta.AgEntityOverlay;
-import io.agrest.runtime.cayenne.AgCayenne;
+import io.agrest.runtime.cayenne.CayenneResolvers;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -51,28 +51,6 @@ public class GET_Resolvers_Nested_ToOneIT extends JerseyAndDerbyCase {
 
         onSuccess(r)
                 .bodyEquals(2, "{\"id\":8,\"e2\":{\"name\":\"xxx\"},\"name\":\"yyy\"},{\"id\":9,\"e2\":null,\"name\":\"zzz\"}")
-                .ranQueries(1);
-    }
-
-    @Test
-    public void test_DisjointPrefetchResolver() {
-
-        e2().insertColumns("id_", "name").values(1, "xxx").exec();
-        e3().insertColumns("id_", "name", "e2_id")
-                .values(8, "yyy", 1)
-                .values(9, "zzz", null)
-                .exec();
-
-        Response r = target("/e3_disjoint_prefetch")
-                .queryParam("include", "id")
-                .queryParam("include", "name")
-                .queryParam("include", "e2.name")
-                .queryParam("cayenneExp", "id > 3")
-                .request().get();
-
-        onSuccess(r)
-                .bodyEquals(2, "{\"id\":8,\"e2\":{\"name\":\"xxx\"},\"name\":\"yyy\"},{\"id\":9,\"e2\":null,\"name\":\"zzz\"}")
-                // disjoint prefetch is counted as 1 query at the DataDomainFilter level
                 .ranQueries(1);
     }
 
@@ -154,22 +132,7 @@ public class GET_Resolvers_Nested_ToOneIT extends JerseyAndDerbyCase {
             // non-standard nested resolver
             AgEntityOverlay<E3> e3Overlay = AgEntity
                     .overlay(E3.class)
-                    .redefineRelationshipResolver("e2", AgCayenne.resolverViaJointParentPrefetch());
-
-            return Ag.select(E3.class, config)
-                    .entityOverlay(e3Overlay)
-                    .uri(uriInfo)
-                    .get();
-        }
-
-        @GET
-        @Path("e3_disjoint_prefetch")
-        public DataResponse<E3> e3_disjoint_prefetch(@Context UriInfo uriInfo) {
-
-            // non-standard nested resolver
-            AgEntityOverlay<E3> e3Overlay = AgEntity
-                    .overlay(E3.class)
-                    .redefineRelationshipResolver("e2", AgCayenne.resolverViaDisjointParentPrefetch());
+                    .redefineRelationshipResolver("e2", CayenneResolvers.nested(config).viaParentPrefetch());
 
             return Ag.select(E3.class, config)
                     .entityOverlay(e3Overlay)
@@ -184,7 +147,7 @@ public class GET_Resolvers_Nested_ToOneIT extends JerseyAndDerbyCase {
             // non-standard nested resolver
             AgEntityOverlay<E3> e3Overlay = AgEntity
                     .overlay(E3.class)
-                    .redefineRelationshipResolver("e2", AgCayenne.resolverViaQueryWithParentIds(config));
+                    .redefineRelationshipResolver("e2", CayenneResolvers.nested(config).viaQueryWithParentIds());
 
             return Ag.select(E3.class, config)
                     .entityOverlay(e3Overlay)
@@ -200,7 +163,7 @@ public class GET_Resolvers_Nested_ToOneIT extends JerseyAndDerbyCase {
             AgEntityOverlay<E3> e3Overlay = AgEntity
                     .overlay(E3.class)
                     // this is actually the standard strategy, but let's see how it works if installed via a request-scoped overlay
-                    .redefineRelationshipResolver("e2", AgCayenne.resolverViaQueryWithParentQualifier(config));
+                    .redefineRelationshipResolver("e2", CayenneResolvers.nested(config).viaQueryWithParentExp());
 
             return Ag.select(E3.class, config)
                     .entityOverlay(e3Overlay)

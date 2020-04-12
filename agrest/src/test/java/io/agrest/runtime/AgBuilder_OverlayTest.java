@@ -11,7 +11,7 @@ import io.agrest.meta.AgEntity;
 import io.agrest.meta.AgRelationship;
 import io.agrest.property.PropertyReader;
 import io.agrest.resolver.NestedDataResolver;
-import io.agrest.runtime.cayenne.processor.select.ViaQueryWithParentQualifierResolver;
+import io.agrest.runtime.cayenne.processor.select.ViaQueryWithParentExpResolver;
 import io.agrest.runtime.meta.IMetadataService;
 import io.agrest.runtime.processor.select.SelectContext;
 import io.agrest.unit.TestWithCayenneMapping;
@@ -77,7 +77,7 @@ public class AgBuilder_OverlayTest extends TestWithCayenneMapping {
 
         AgRuntime runtime = new AgBuilder()
                 .cayenneRuntime(TestWithCayenneMapping.runtime)
-                .entityOverlay(AgEntity.overlay(E3.class).redefineRelationshipResolver("e2", resolver))
+                .entityOverlay(AgEntity.overlay(E3.class).redefineRelationshipResolver("e2", (t, n) -> resolver))
                 .build();
 
         IMetadataService metadata = runtime.service(IMetadataService.class);
@@ -95,7 +95,7 @@ public class AgBuilder_OverlayTest extends TestWithCayenneMapping {
         assertNotNull(unchanged);
         assertSame(metadata.getAgEntity(E5.class), unchanged.getTargetEntity());
         assertNotSame(resolver, unchanged.getResolver());
-        assertTrue(unchanged.getResolver() instanceof ViaQueryWithParentQualifierResolver);
+        assertTrue(unchanged.getResolver() instanceof ViaQueryWithParentExpResolver);
 
         assertFalse(unchanged.isToMany());
     }
@@ -107,7 +107,7 @@ public class AgBuilder_OverlayTest extends TestWithCayenneMapping {
 
         AgRuntime runtime = new AgBuilder()
                 .cayenneRuntime(TestWithCayenneMapping.runtime)
-                .entityOverlay(AgEntity.overlay(E3.class).redefineRelationshipResolver("adHoc", resolver))
+                .entityOverlay(AgEntity.overlay(E3.class).redefineRelationshipResolver("adHoc", (t, n) -> resolver))
                 .build();
 
         IMetadataService metadata = runtime.service(IMetadataService.class);
@@ -122,7 +122,7 @@ public class AgBuilder_OverlayTest extends TestWithCayenneMapping {
         assertNotNull(unchanged);
         assertSame(metadata.getAgEntity(E5.class), unchanged.getTargetEntity());
         assertNotSame(resolver, unchanged.getResolver());
-        assertTrue(unchanged.getResolver() instanceof ViaQueryWithParentQualifierResolver);
+        assertTrue(unchanged.getResolver() instanceof ViaQueryWithParentExpResolver);
         assertFalse(unchanged.isToMany());
     }
 
@@ -134,7 +134,7 @@ public class AgBuilder_OverlayTest extends TestWithCayenneMapping {
         AgRuntime runtime = new AgBuilder()
                 .cayenneRuntime(TestWithCayenneMapping.runtime)
                 // just for kicks redefine to-one as to-many, and change its target
-                .entityOverlay(AgEntity.overlay(E3.class).redefineToMany("e2", E1.class, resolver))
+                .entityOverlay(AgEntity.overlay(E3.class).redefineToMany("e2", E1.class, (t, n) -> resolver))
                 .build();
 
         IMetadataService metadata = runtime.service(IMetadataService.class);
@@ -152,7 +152,7 @@ public class AgBuilder_OverlayTest extends TestWithCayenneMapping {
         assertNotNull(unchanged);
         assertSame(metadata.getAgEntity(E5.class), unchanged.getTargetEntity());
         assertNotSame(resolver, unchanged.getResolver());
-        assertTrue(unchanged.getResolver() instanceof ViaQueryWithParentQualifierResolver);
+        assertTrue(unchanged.getResolver() instanceof ViaQueryWithParentExpResolver);
         assertFalse(unchanged.isToMany());
     }
 
@@ -163,7 +163,7 @@ public class AgBuilder_OverlayTest extends TestWithCayenneMapping {
 
         AgRuntime runtime = new AgBuilder()
                 .cayenneRuntime(TestWithCayenneMapping.runtime)
-                .entityOverlay(AgEntity.overlay(E3.class).redefineToOne("adHoc", P1.class, resolver))
+                .entityOverlay(AgEntity.overlay(E3.class).redefineToOne("adHoc", P1.class, (t, n) -> resolver))
                 .build();
 
         IMetadataService metadata = runtime.service(IMetadataService.class);
@@ -181,7 +181,7 @@ public class AgBuilder_OverlayTest extends TestWithCayenneMapping {
         assertNotNull(unchanged);
         assertSame(metadata.getAgEntity(E5.class), unchanged.getTargetEntity());
         assertNotSame(resolver, unchanged.getResolver());
-        assertTrue(unchanged.getResolver() instanceof ViaQueryWithParentQualifierResolver);
+        assertTrue(unchanged.getResolver() instanceof ViaQueryWithParentExpResolver);
         assertFalse(unchanged.isToMany());
     }
 

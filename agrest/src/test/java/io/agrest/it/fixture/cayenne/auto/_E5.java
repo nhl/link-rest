@@ -27,13 +27,13 @@ public abstract class _E5 extends BaseDataObject {
     public static final Property<Date> DATE = Property.create("date", Date.class);
     public static final Property<String> NAME = Property.create("name", String.class);
     public static final Property<List<E15>> E15S = Property.create("e15s", List.class);
-    public static final Property<List<E3>> E2S = Property.create("e2s", List.class);
+    public static final Property<List<E3>> E3S = Property.create("e3s", List.class);
 
     protected Date date;
     protected String name;
 
     protected Object e15s;
-    protected Object e2s;
+    protected Object e3s;
 
     public void setDate(Date date) {
         beforePropertyWrite("date", this.date, date);
@@ -68,17 +68,17 @@ public abstract class _E5 extends BaseDataObject {
         return (List<E15>)readProperty("e15s");
     }
 
-    public void addToE2s(E3 obj) {
-        addToManyTarget("e2s", obj, true);
+    public void addToE3s(E3 obj) {
+        addToManyTarget("e3s", obj, true);
     }
 
-    public void removeFromE2s(E3 obj) {
-        removeToManyTarget("e2s", obj, true);
+    public void removeFromE3s(E3 obj) {
+        removeToManyTarget("e3s", obj, true);
     }
 
     @SuppressWarnings("unchecked")
-    public List<E3> getE2s() {
-        return (List<E3>)readProperty("e2s");
+    public List<E3> getE3s() {
+        return (List<E3>)readProperty("e3s");
     }
 
     @Override
@@ -94,8 +94,8 @@ public abstract class _E5 extends BaseDataObject {
                 return this.name;
             case "e15s":
                 return this.e15s;
-            case "e2s":
-                return this.e2s;
+            case "e3s":
+                return this.e3s;
             default:
                 return super.readPropertyDirectly(propName);
         }
@@ -117,8 +117,8 @@ public abstract class _E5 extends BaseDataObject {
             case "e15s":
                 this.e15s = val;
                 break;
-            case "e2s":
-                this.e2s = val;
+            case "e3s":
+                this.e3s = val;
                 break;
             default:
                 super.writePropertyDirectly(propName, val);
@@ -139,7 +139,7 @@ public abstract class _E5 extends BaseDataObject {
         out.writeObject(this.date);
         out.writeObject(this.name);
         out.writeObject(this.e15s);
-        out.writeObject(this.e2s);
+        out.writeObject(this.e3s);
     }
 
     @Override
@@ -148,7 +148,7 @@ public abstract class _E5 extends BaseDataObject {
         this.date = (Date)in.readObject();
         this.name = (String)in.readObject();
         this.e15s = in.readObject();
-        this.e2s = in.readObject();
+        this.e3s = in.readObject();
     }
 
 }

@@ -1,6 +1,6 @@
 === Configure and run API generation
 There is an example of the Maven plugin configuration:
-[source, XML]
+[source, xml, subs="verbatim,attributes"]
 ----
 <plugin>
     <groupId>org.openapitools</groupId>
@@ -16,7 +16,7 @@ There is an example of the Maven plugin configuration:
                 <generatorName>io.swagger.codegen.languages.AgServerCodegen</generatorName>
                 <output>${project.basedir}</output>
                 <apiPackage>org.example.agrest</apiPackage>
-                <modelPackage>org.example.agrest.persistente</modelPackage>
+                <modelPackage>org.example.agrest.persistent</modelPackage>
                 <invokerPackage>org.example.agrest</invokerPackage>
                 <generateModels>false</generateModels>
                 <skipOverwrite>false</skipOverwrite>
@@ -28,39 +28,47 @@ There is an example of the Maven plugin configuration:
         <dependency>
             <groupId>io.agrest.openapi</groupId>
             <artifactId>agrest-openapi-designfirst</artifactId>
-            <version>3.0-SNAPSHOT</version>
+            <version>{project-version}</version>
         </dependency>
     </dependencies>
 </plugin>
 ----
+
 [#inputSpec]
-===== <inputSpec>
+*<inputSpec>*
+
 Points to your API definition in `.yaml` or `.json` formats.
 
 [#generatorName]
-===== <generatorName>
+*<generatorName>*
+
 Sets the Agrest custom code generator.
 
 [#output]
-===== <output>
+*<output>*
+
 Sets the output catalog for all generated items.
 
 [#apiPackage]
-===== <apiPackage>
+*<apiPackage>*
+
 Contains full package name of resource implementation classes to be generated.
 
 [#modelPackage]
-===== <modelPackage>
+*<modelPackage>*
+
 Contains full package name of model classes.
 If <<generateModels>> is set to `true`, the POJO stubs of models will be generated.
 Otherwise, existing model classes from this package will be used.
 
 [#generateModels]
-===== <generateModels>
+*<generateModels>*
+
 Generates POJO of models or uses existing ones.
 
 [#skipOverwrite]
-===== <skipOverwrite>
+*<skipOverwrite>*
+
 If it is set to `false`, all generated files will be overwritten each time during `mvn clean install`.
 So, if you are planning to customize the generated API implementation, this parameter should be set to `true`.
 
