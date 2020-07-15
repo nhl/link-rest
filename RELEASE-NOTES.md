@@ -1,11 +1,20 @@
-Release 3.4
+## Release 3.6
+
+* #444 Support id propagation on update from PK properties
+
+## Release 3.5
+
+* #433 "agrest-cayenne" : isolate a pluggable Cayenne backend for Agrest
+* #443 Null-safe AgRequestBuilder
+
+## Release 3.4
 
 * #413 Pluggable resolver for hierarchical fetches
 * #420 Per-request EncoderFilters
 * #421 Custom per-request Encoder is ignored on update
 * #422 GET: Per-request AgEntityOverlay to customize properties based on request state
 * #423 Wrong Encoder for target entities in overlayed relationships
-* #424 Unwinding Cayenne dependencies - get rid of AgPersistent* models
+* #424 Unwinding Cayenne dependencies - get rid of AgPersistent models
 * #428 Add support for Case Insensitive Sorting
 * #430 agrest-client: Use protocol "dir" enum instead of "SortDirection" enum
 * #432 Cayenne resolvers reading their objects from parent must follow contract with child resolvers

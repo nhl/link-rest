@@ -3,7 +3,7 @@
     <parent>
         <artifactId>agrest-parent</artifactId>
         <groupId>io.agrest</groupId>
-        <version>3.4-SNAPSHOT</version>
+        <version>3.6-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -16,14 +16,26 @@
         <!-- required runtime dependencies -->
         <dependency>
             <groupId>io.agrest</groupId>
-            <artifactId>agrest</artifactId>
+            <artifactId>agrest-engine</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.agrest</groupId>
+            <artifactId>agrest-cayenne</artifactId>
             <version>${project.version}</version>
         </dependency>
 
         <!-- unit test deps -->
         <dependency>
             <groupId>io.agrest</groupId>
-            <artifactId>agrest</artifactId>
+            <artifactId>agrest-engine</artifactId>
+            <type>test-jar</type>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.agrest</groupId>
+            <artifactId>agrest-cayenne</artifactId>
             <type>test-jar</type>
             <version>${project.version}</version>
             <scope>test</scope>

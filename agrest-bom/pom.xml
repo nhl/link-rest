@@ -1,13 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <!-- Not inheriting from parent to avoid pollution of client projects with things like test dependency versions
      (e.g. "bootique-bom"). As a result have to duplicate certain distribution-related sections.
     -->
     <groupId>io.agrest</groupId>
-    <version>3.4-SNAPSHOT</version>
+    <version>3.6-SNAPSHOT</version>
     <artifactId>agrest-bom</artifactId>
     <packaging>pom</packaging>
     <name>agrest-bom: Bill of Materials w/all public modules</name>
@@ -16,6 +15,34 @@
         Bill of Materials (BOM) for Agrest modules that allows the end users to capture the version of multiple Agrest
         modules at once.
     </description>
+
+    <url>https://github.com/agrestio/agrest/</url>
+
+    <licenses>
+        <license>
+            <name>Apache 2.0 License</name>
+            <url>https://github.com/agrestio/agrest/blob/master/LICENSE.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+
+    <developers>
+        <developer>
+            <id>andrus</id>
+            <name>Andrus Adamchik</name>
+            <email>andrus@objectstyle.com</email>
+            <organization>ObjectStyle</organization>
+            <timezone>America/New_York</timezone>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:https://github.com/agrestio/agrest</connection>
+        <developerConnection>scm:git:ssh://git@github.com/agrestio/agrest</developerConnection>
+        <url>https://github.com/agrestio/agrest</url>
+        <tag>HEAD</tag>
+    </scm>
 
     <distributionManagement>
         <repository>
@@ -43,6 +70,16 @@
                 <version>${project.version}</version>
             </dependency>
             <dependency>
+                <groupId>io.agrest</groupId>
+                <artifactId>agrest-engine</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.agrest</groupId>
+                <artifactId>agrest-cayenne</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+             <dependency>
                 <groupId>io.agrest</groupId>
                 <artifactId>agrest</artifactId>
                 <version>${project.version}</version>

@@ -4,7 +4,7 @@
 
     <groupId>io.agrest</groupId>
     <artifactId>agrest-parent</artifactId>
-    <version>3.4-SNAPSHOT</version>
+    <version>3.6-SNAPSHOT</version>
 
     <name>agrest: parent POM of all modules</name>
     <description>Agrest is a Model-driven RESTful data services framework. This is the parent POM of all Agrest modules</description>
@@ -13,9 +13,11 @@
     <modules>
         <module>agrest-base</module>
         <module>agrest-annotations</module>
+        <module>agrest-engine</module>
+        <module>agrest-cayenne</module>
         <module>agrest</module>
-        <module>agrest-client</module>
         <module>agrest-sencha</module>
+        <module>agrest-client</module>
         <module>agrest-bom</module>
         <module>agrest-docs</module>
         <module>agrest-openapi-designfirst</module>
@@ -335,6 +337,12 @@
                                 <goals>
                                     <goal>sign</goal>
                                 </goals>
+                                <configuration>
+                                    <gpgArguments>
+                                        <arg>--pinentry-mode</arg>
+                                        <arg>loopback</arg>
+                                    </gpgArguments>
+                                </configuration>
                             </execution>
                         </executions>
                     </plugin>

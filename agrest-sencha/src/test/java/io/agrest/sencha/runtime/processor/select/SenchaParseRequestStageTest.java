@@ -1,9 +1,10 @@
 package io.agrest.sencha.runtime.processor.select;
 
 import io.agrest.AgRequest;
+import io.agrest.cayenne.unit.TestWithCayenneMapping;
 import io.agrest.it.fixture.cayenne.E2;
-import io.agrest.protocol.Dir;
-import io.agrest.protocol.Sort;
+import io.agrest.base.protocol.Dir;
+import io.agrest.base.protocol.Sort;
 import io.agrest.runtime.jackson.IJacksonService;
 import io.agrest.runtime.jackson.JacksonService;
 import io.agrest.runtime.processor.select.SelectContext;
@@ -22,7 +23,6 @@ import io.agrest.runtime.request.IAgRequestBuilderFactory;
 import io.agrest.sencha.SenchaRequest;
 import io.agrest.sencha.runtime.protocol.ISenchaFilterParser;
 import io.agrest.sencha.runtime.protocol.SenchaFilterParser;
-import io.agrest.unit.TestWithCayenneMapping;
 import org.junit.Before;
 import org.junit.Test;
 

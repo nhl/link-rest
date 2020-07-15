@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>io.agrest</groupId>
 		<artifactId>agrest-parent</artifactId>
-		<version>3.4-SNAPSHOT</version>
+		<version>3.6-SNAPSHOT</version>
 	</parent>
 
 	<artifactId>agrest-sencha</artifactId>
@@ -17,7 +17,13 @@
 		<!-- required runtime dependencies -->
 		<dependency>
 			<groupId>io.agrest</groupId>
-			<artifactId>agrest</artifactId>
+			<artifactId>agrest-engine</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<!-- Sencha extension requires Cayenne extension... No abstract Cayenne-free version is supported -->
+		<dependency>
+			<groupId>io.agrest</groupId>
+			<artifactId>agrest-cayenne</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 
@@ -32,7 +38,6 @@
 			<artifactId>mockito-all</artifactId>
 			<scope>test</scope>
 		</dependency>
-
 		<dependency>
 			<groupId>io.bootique</groupId>
 			<artifactId>bootique-test</artifactId>
@@ -53,7 +58,6 @@
 			<artifactId>bootique-jdbc-hikaricp</artifactId>
 			<scope>test</scope>
 		</dependency>
-
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-simple</artifactId>
@@ -61,10 +65,17 @@
 		</dependency>
 		<dependency>
 			<groupId>io.agrest</groupId>
-			<artifactId>agrest</artifactId>
-            <type>test-jar</type>
-			<version>${project.version}</version>
+			<artifactId>agrest-engine</artifactId>
+			<type>test-jar</type>
 			<scope>test</scope>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.agrest</groupId>
+			<artifactId>agrest-cayenne</artifactId>
+			<type>test-jar</type>
+			<scope>test</scope>
+			<version>${project.version}</version>
 		</dependency>
 	</dependencies>
 
